@@ -10,11 +10,15 @@ const draftSelect = document.getElementById("draft-select");
 const refreshQuizzesButton = document.getElementById("refresh-quizzes");
 const newQuizButton = document.getElementById("new-quiz");
 const publishQuizButton = document.getElementById("publish-quiz");
+const quizListEmpty = document.getElementById("quiz-list-empty");
+const quizListTable = document.getElementById("quiz-list-table");
+const quizListBody = document.getElementById("quiz-list-body");
 
 const CHOICE_LABELS = ["A", "B", "C", "D"];
 const QUESTION_COUNT = 5;
 
 let editingQuizId = null;
+let cachedQuizzes = [];
 
 function syncActionState() {
   publishQuizButton.disabled = !editingQuizId;
@@ -145,15 +149,90 @@ async function loadAssignments() {
   renderAssignments(data.classes || []);
 }
 
+function renderQuizList(quizzes) {
+  quizListBody.innerHTML = "";
+
+  if (!quizzes.length) {
+    quizListTable.hidden = true;
+    quizListEmpty.hidden = false;
+    return;
+  }
+
+  quizListTable.hidden = false;
+  quizListEmpty.hidden = true;
+
+  quizzes.forEach((quiz) => {
+    const row = document.createElement("tr");
+
+    const titleCell = document.createElement("td");
+    titleCell.textContent = quiz.title;
+
+    const statusCell = document.createElement("td");
+    statusCell.textContent = quiz.status;
+
+    const resultCell = document.createElement("td");
+    resultCell.textContent = quiz.resultStatus || "hidden";
+
+    const blocksCell = document.createElement("td");
+    blocksCell.textContent = String(quiz.assignments?.length || 0);
+
+    const actionsCell = document.createElement("td");
+
+    if (quiz.status === "draft") {
+      const editButton = document.createElement("button");
+      editButton.type = "button";
+      editButton.className = "action-btn edit";
+      editButton.dataset.action = "edit";
+      editButton.dataset.quizId = quiz.id;
+      editButton.textContent = "Edit";
+      actionsCell.appendChild(editButton);
+
+      const publishButton = document.createElement("button");
+      publishButton.type = "button";
+      publishButton.className = "action-btn";
+      publishButton.dataset.action = "publishQuiz";
+      publishButton.dataset.quizId = quiz.id;
+      publishButton.textContent = "Publish Quiz";
+      actionsCell.appendChild(publishButton);
+    } else {
+      const publishedTag = document.createElement("span");
+      publishedTag.className = "subtitle";
+      publishedTag.textContent = "Quiz published";
+      actionsCell.appendChild(publishedTag);
+    }
+
+    if (quiz.status === "published" && quiz.resultStatus !== "published") {
+      const publishResultsButton = document.createElement("button");
+      publishResultsButton.type = "button";
+      publishResultsButton.className = "action-btn";
+      publishResultsButton.dataset.action = "publishResults";
+      publishResultsButton.dataset.quizId = quiz.id;
+      publishResultsButton.textContent = "Publish Results";
+      actionsCell.appendChild(publishResultsButton);
+    } else if (quiz.resultStatus === "published") {
+      const resultsTag = document.createElement("span");
+      resultsTag.className = "subtitle";
+      resultsTag.textContent = "Results released";
+      actionsCell.appendChild(resultsTag);
+    }
+
+    row.append(titleCell, statusCell, resultCell, blocksCell, actionsCell);
+    quizListBody.appendChild(row);
+  });
+}
+
 async function loadDrafts() {
   const response = await fetch(`${API_BASE}/admin/quizzes`, { credentials: "include" });
   if (!response.ok) {
-    setMessage("Unable to load drafts.", true);
+    setMessage("Unable to load quizzes.", true);
     return;
   }
 
   const data = await response.json();
-  const drafts = (data.quizzes || []).filter((quiz) => quiz.status === "draft");
+  cachedQuizzes = data.quizzes || [];
+  renderQuizList(cachedQuizzes);
+
+  const drafts = cachedQuizzes.filter((quiz) => quiz.status === "draft");
 
   draftSelect.innerHTML = '<option value="">Select a draft to edit</option>';
   drafts.forEach((draft) => {
@@ -377,6 +456,59 @@ publishQuizButton.addEventListener("click", async () => {
   await loadDrafts();
   resetQuizForm();
   setMessage("Quiz published.");
+});
+
+quizListBody.addEventListener("click", async (event) => {
+  const actionButton = event.target.closest("button[data-action]");
+  if (!actionButton) {
+    return;
+  }
+
+  const quizId = actionButton.dataset.quizId;
+  const action = actionButton.dataset.action;
+  if (!quizId || !action) {
+    return;
+  }
+
+  if (action === "edit") {
+    draftSelect.value = quizId;
+    await loadQuizIntoForm(quizId);
+    return;
+  }
+
+  if (action === "publishQuiz") {
+    const response = await fetch(`${API_BASE}/admin/quizzes/${quizId}/publish`, {
+      method: "POST",
+      credentials: "include",
+    });
+    if (!response.ok) {
+      const errorPayload = await response.json().catch(() => ({}));
+      setMessage(errorPayload.error || "Unable to publish quiz.", true);
+      return;
+    }
+
+    await loadDrafts();
+    if (editingQuizId === quizId) {
+      resetQuizForm();
+    }
+    setMessage("Quiz published.");
+    return;
+  }
+
+  if (action === "publishResults") {
+    const response = await fetch(`${API_BASE}/admin/quizzes/${quizId}/publish-results`, {
+      method: "POST",
+      credentials: "include",
+    });
+    if (!response.ok) {
+      const errorPayload = await response.json().catch(() => ({}));
+      setMessage(errorPayload.error || "Unable to publish results.", true);
+      return;
+    }
+
+    await loadDrafts();
+    setMessage("Results published.");
+  }
 });
 
 renderQuestionCards();
