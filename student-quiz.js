@@ -127,7 +127,8 @@ submitButton.addEventListener("click", async () => {
     return;
   }
 
-  setMessage("Quiz submitted successfully.");
+  const data = await response.json();
+  setMessage(`Quiz submitted. Score saved: ${data.attempt.score}/${data.attempt.maxScore}.`);
 });
 
 loadQuiz();
