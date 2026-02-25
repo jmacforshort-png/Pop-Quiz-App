@@ -129,6 +129,29 @@ function createAuthApp({ prisma, jwtSecret }) {
     }
   );
 
+  app.post(
+    "/student/quizzes/:quizId/submit",
+    requireAuth(jwtSecret),
+    requireRole("student"),
+    async (req, res) => {
+      try {
+        const attempt = await studentQuizService.submitQuizAttempt({
+          classId: req.auth.classId,
+          quizId: req.params.quizId,
+          studentId: req.auth.sub,
+          answers: req.body.answers,
+        });
+        return res.status(201).json({ attempt });
+      } catch (error) {
+        if (error instanceof StudentQuizServiceError) {
+          return res.status(error.statusCode).json({ error: error.message });
+        }
+
+        return res.status(500).json({ error: "Unable to submit quiz attempt." });
+      }
+    }
+  );
+
   app.get("/admin/classes", requireAuth(jwtSecret), requireRole("admin"), async (req, res) => {
     const classes = await classService.listClasses(req.auth.sub);
     return res.status(200).json({ classes });
