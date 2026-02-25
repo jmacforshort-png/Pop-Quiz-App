@@ -1,7 +1,7 @@
 const cookieParser = require("cookie-parser");
 const express = require("express");
 const { createAuthService, AuthServiceError } = require("./authService");
-const { requireAuth } = require("./authMiddleware");
+const { requireAuth, requireRole } = require("./authMiddleware");
 const { attachSessionCookie, clearSessionCookie } = require("./session");
 
 function createAuthApp({ prisma, jwtSecret }) {
@@ -59,6 +59,19 @@ function createAuthApp({ prisma, jwtSecret }) {
       },
     });
   });
+
+  app.get("/admin/ping", requireAuth(jwtSecret), requireRole("admin"), (_req, res) => {
+    return res.status(200).json({ ok: true });
+  });
+
+  app.get(
+    "/student/ping",
+    requireAuth(jwtSecret),
+    requireRole(["student", "admin"]),
+    (_req, res) => {
+      return res.status(200).json({ ok: true });
+    }
+  );
 
   return app;
 }
