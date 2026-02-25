@@ -4,7 +4,18 @@ function validQuizPayload() {
   return {
     title: "Unit 1 Quiz",
     description: "Five-question check",
-    assignments: [{ classId: "class_1" }, { classId: "class_2" }],
+    assignments: [
+      {
+        classId: "class_1",
+        visibleFromUtc: "2026-02-25T18:00:00.000Z",
+        visibleUntilUtc: "2026-02-25T19:00:00.000Z",
+      },
+      {
+        classId: "class_2",
+        visibleFromUtc: "2026-02-25T20:00:00.000Z",
+        visibleUntilUtc: "2026-02-25T21:00:00.000Z",
+      },
+    ],
     questions: Array.from({ length: 5 }, (_, index) => ({
       prompt: `Question ${index + 1}`,
       choices: [
@@ -103,10 +114,27 @@ describe("quiz service", () => {
     const prisma = createQuizPrismaMock();
     const quizService = createQuizService({ prisma });
     const payload = validQuizPayload();
-    payload.assignments = [{ classId: "class_3" }];
+    payload.assignments = [
+      {
+        classId: "class_3",
+        visibleFromUtc: "2026-02-25T18:00:00.000Z",
+        visibleUntilUtc: "2026-02-25T19:00:00.000Z",
+      },
+    ];
 
     await expect(quizService.createDraftQuiz("admin_1", payload)).rejects.toMatchObject({
       statusCode: 403,
+    });
+  });
+
+  it("rejects invalid assignment schedule", async () => {
+    const prisma = createQuizPrismaMock();
+    const quizService = createQuizService({ prisma });
+    const payload = validQuizPayload();
+    payload.assignments[0].visibleUntilUtc = payload.assignments[0].visibleFromUtc;
+
+    await expect(quizService.createDraftQuiz("admin_1", payload)).rejects.toMatchObject({
+      statusCode: 400,
     });
   });
 });

@@ -22,13 +22,6 @@ function toQuestionCreateInput(questions) {
   }));
 }
 
-function defaultAssignmentWindow() {
-  const visibleFromUtc = new Date();
-  const visibleUntilUtc = new Date(visibleFromUtc.getTime() + 365 * 24 * 60 * 60 * 1000);
-
-  return { visibleFromUtc, visibleUntilUtc };
-}
-
 function createQuizService({ prisma }) {
   if (!prisma) {
     throw new Error("createQuizService requires prisma client.");
@@ -46,6 +39,9 @@ function createQuizService({ prisma }) {
     }
 
     const classIds = [...new Set(parsed.data.assignments.map((assignment) => assignment.classId))];
+    if (classIds.length !== parsed.data.assignments.length) {
+      throw new QuizServiceError(400, "Each block can only be assigned once per quiz.");
+    }
     const adminClasses = await prisma.class.findMany({
       where: { adminId, id: { in: classIds } },
       select: { id: true },
@@ -54,6 +50,28 @@ function createQuizService({ prisma }) {
       throw new QuizServiceError(403, "One or more assigned blocks are invalid.");
     }
 
+    const scheduleEntries = parsed.data.assignments.map((assignment) => {
+      const visibleFromUtc = new Date(assignment.visibleFromUtc);
+      const visibleUntilUtc = new Date(assignment.visibleUntilUtc);
+
+      if (
+        Number.isNaN(visibleFromUtc.getTime()) ||
+        Number.isNaN(visibleUntilUtc.getTime()) ||
+        visibleUntilUtc <= visibleFromUtc
+      ) {
+        throw new QuizServiceError(
+          400,
+          "Each block assignment needs a valid visibility window (end must be after start)."
+        );
+      }
+
+      return {
+        classId: assignment.classId,
+        visibleFromUtc,
+        visibleUntilUtc,
+      };
+    });
+
     return prisma.quiz.create({
       data: {
         adminId,
@@ -61,10 +79,7 @@ function createQuizService({ prisma }) {
         description: parsed.data.description,
         status: "draft",
         assignments: {
-          create: classIds.map((classId) => ({
-            classId,
-            ...defaultAssignmentWindow(),
-          })),
+          create: scheduleEntries,
         },
         questions: {
           create: toQuestionCreateInput(parsed.data.questions),

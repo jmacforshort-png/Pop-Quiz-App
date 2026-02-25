@@ -79,8 +79,8 @@ function renderAssignments(classes) {
   }
 
   classes.forEach((classItem) => {
-    const label = document.createElement("label");
-    label.className = "assignment-option";
+    const row = document.createElement("div");
+    row.className = "assignment-option";
 
     const checkbox = document.createElement("input");
     checkbox.type = "checkbox";
@@ -90,8 +90,26 @@ function renderAssignments(classes) {
     const text = document.createElement("span");
     text.textContent = `${classItem.name} (Block ${classItem.blockNumber})`;
 
-    label.append(checkbox, text);
-    assignmentList.appendChild(label);
+    const fromLabel = document.createElement("label");
+    fromLabel.textContent = "From";
+
+    const fromInput = document.createElement("input");
+    fromInput.type = "datetime-local";
+    fromInput.dataset.role = "visibleFrom";
+    fromInput.dataset.classId = classItem.id;
+    fromLabel.appendChild(fromInput);
+
+    const untilLabel = document.createElement("label");
+    untilLabel.textContent = "Until";
+
+    const untilInput = document.createElement("input");
+    untilInput.type = "datetime-local";
+    untilInput.dataset.role = "visibleUntil";
+    untilInput.dataset.classId = classItem.id;
+    untilLabel.appendChild(untilInput);
+
+    row.append(checkbox, text, fromLabel, untilLabel);
+    assignmentList.appendChild(row);
   });
 }
 
@@ -116,9 +134,20 @@ function buildQuizPayload() {
   return {
     title: quizTitleInput.value,
     description: quizDescriptionInput.value || undefined,
-    assignments: assignmentInputs.map((input) => ({
-      classId: input.value,
-    })),
+    assignments: assignmentInputs.map((input) => {
+      const fromInput = document.querySelector(
+        `[data-role="visibleFrom"][data-class-id="${input.value}"]`
+      );
+      const untilInput = document.querySelector(
+        `[data-role="visibleUntil"][data-class-id="${input.value}"]`
+      );
+
+      return {
+        classId: input.value,
+        visibleFromUtc: new Date(fromInput.value).toISOString(),
+        visibleUntilUtc: new Date(untilInput.value).toISOString(),
+      };
+    }),
     questions: cards.map((card) => {
       const prompt = card.querySelector('[data-role="prompt"]').value;
       const answerKey = card.querySelector('[data-role="answerKey"]').value;
@@ -142,6 +171,28 @@ quizForm.addEventListener("submit", async (event) => {
 
   if (!document.querySelector('[data-role="assignment"]:checked')) {
     setMessage("Select at least one block before saving.", true);
+    return;
+  }
+
+  const selectedAssignments = Array.from(
+    document.querySelectorAll('[data-role="assignment"]:checked')
+  );
+  const hasInvalidWindow = selectedAssignments.some((input) => {
+    const fromInput = document.querySelector(
+      `[data-role="visibleFrom"][data-class-id="${input.value}"]`
+    );
+    const untilInput = document.querySelector(
+      `[data-role="visibleUntil"][data-class-id="${input.value}"]`
+    );
+
+    if (!fromInput.value || !untilInput.value) {
+      return true;
+    }
+
+    return new Date(untilInput.value) <= new Date(fromInput.value);
+  });
+  if (hasInvalidWindow) {
+    setMessage("Each selected block must have a valid start/end schedule.", true);
     return;
   }
 

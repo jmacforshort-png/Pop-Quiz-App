@@ -7,6 +7,8 @@ const baseQuizSchema = z.object({
     .array(
       z.object({
         classId: z.string().min(1, "Class assignment requires classId."),
+        visibleFromUtc: z.string().datetime("Visible from is required."),
+        visibleUntilUtc: z.string().datetime("Visible until is required."),
       })
     )
     .min(1, "Select at least one block for this quiz."),
