@@ -37,6 +37,7 @@ Admin class routes (admin role + session required):
 - `GET /admin/quizzes` list admin quizzes
 - `GET /admin/quizzes/:quizId` load a quiz for editing
 - `PUT /admin/quizzes/:quizId` update a draft quiz
+- `POST /admin/quizzes/:quizId/publish` publish a draft quiz
 
 ## Admin Class UI
 
