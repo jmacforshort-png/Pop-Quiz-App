@@ -121,3 +121,20 @@
   padding: 8px;
   font: inherit;
 }
+
+.assignment-fieldset {
+  border: 1px solid #e5ebde;
+  border-radius: 12px;
+  padding: 10px 12px;
+}
+
+.assignment-list {
+  display: grid;
+  gap: 8px;
+}
+
+.assignment-option {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}

@@ -4,6 +4,7 @@ function validQuizPayload() {
   return {
     title: "Unit 1 Quiz",
     description: "Five-question check",
+    assignments: [{ classId: "class_1" }, { classId: "class_2" }],
     questions: Array.from({ length: 5 }, (_, index) => ({
       prompt: `Question ${index + 1}`,
       choices: [
@@ -17,12 +18,27 @@ function validQuizPayload() {
 }
 
 function createQuizPrismaMock() {
+  const classes = [
+    { id: "class_1", adminId: "admin_1" },
+    { id: "class_2", adminId: "admin_1" },
+    { id: "class_3", adminId: "admin_2" },
+  ];
+
   return {
+    class: {
+      findMany: async ({ where }) => {
+        return classes
+          .filter((item) => item.adminId === where.adminId)
+          .filter((item) => where.id.in.includes(item.id))
+          .map((item) => ({ id: item.id }));
+      },
+    },
     quiz: {
       create: async ({ data }) => {
         return {
           id: "quiz_1",
           ...data,
+          assignments: data.assignments.create,
           questions: data.questions.create.map((question) => ({
             id: `question_${question.orderIndex}`,
             orderIndex: question.orderIndex,
@@ -44,6 +60,7 @@ describe("quiz service", () => {
 
     expect(quiz.title).toBe("Unit 1 Quiz");
     expect(quiz.status).toBe("draft");
+    expect(quiz.assignments).toHaveLength(2);
     expect(quiz.questions).toHaveLength(5);
     expect(quiz.questions[0].orderIndex).toBe(1);
     expect(quiz.questions[0].choices).toHaveLength(4);
@@ -68,6 +85,28 @@ describe("quiz service", () => {
 
     await expect(quizService.createDraftQuiz("admin_1", payload)).rejects.toMatchObject({
       statusCode: 400,
+    });
+  });
+
+  it("requires at least one assigned block", async () => {
+    const prisma = createQuizPrismaMock();
+    const quizService = createQuizService({ prisma });
+    const payload = validQuizPayload();
+    payload.assignments = [];
+
+    await expect(quizService.createDraftQuiz("admin_1", payload)).rejects.toMatchObject({
+      statusCode: 400,
+    });
+  });
+
+  it("rejects assignment not owned by admin", async () => {
+    const prisma = createQuizPrismaMock();
+    const quizService = createQuizService({ prisma });
+    const payload = validQuizPayload();
+    payload.assignments = [{ classId: "class_3" }];
+
+    await expect(quizService.createDraftQuiz("admin_1", payload)).rejects.toMatchObject({
+      statusCode: 403,
     });
   });
 });
