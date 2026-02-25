@@ -17,12 +17,20 @@
     <main class="app student-app">
       <header class="hero">
         <p class="kicker">Student Panel</p>
-        <h1>Take Quiz</h1>
+        <h1 id="student-quiz-title">Take Quiz</h1>
+        <p id="student-quiz-description" class="subtitle"></p>
         <p class="subtitle"><a href="student.html">Back to available quizzes</a></p>
       </header>
       <section class="card">
-        <p>Quiz-taking flow is loaded from this page in later tickets.</p>
+        <div id="student-quiz-questions" class="student-list"></div>
+        <div class="row-actions">
+          <button id="submit-student-quiz" class="btn primary" type="button" disabled>
+            Submit Quiz
+          </button>
+        </div>
+        <p id="student-quiz-message" class="form-message" aria-live="polite"></p>
       </section>
     </main>
+    <script src="student-quiz.js"></script>
   </body>
 </html>

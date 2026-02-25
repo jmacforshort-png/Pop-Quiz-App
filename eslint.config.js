@@ -20,6 +20,7 @@ module.exports = [
         fetch: "readonly",
         localStorage: "readonly",
         confirm: "readonly",
+        URLSearchParams: "readonly",
       },
     },
     rules: {
