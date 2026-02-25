@@ -4,6 +4,8 @@ const refreshButton = document.getElementById("refresh-student");
 const messageText = document.getElementById("student-message");
 const emptyState = document.getElementById("student-empty");
 const listContainer = document.getElementById("student-list");
+const resultsEmptyState = document.getElementById("student-results-empty");
+const resultsListContainer = document.getElementById("student-results-list");
 
 function setMessage(text, isError = false) {
   messageText.textContent = text;
@@ -58,21 +60,65 @@ function renderQuizzes(quizzes) {
   });
 }
 
-async function loadStudentQuizzes() {
-  setMessage("Loading quizzes...");
+function renderResults(results) {
+  resultsListContainer.innerHTML = "";
 
-  const response = await fetch(`${API_BASE}/student/quizzes`, {
-    credentials: "include",
-  });
-
-  if (!response.ok) {
-    setMessage("Unable to load quizzes. Make sure you are logged in as a student.", true);
-    renderQuizzes([]);
+  if (!results.length) {
+    resultsListContainer.hidden = true;
+    resultsEmptyState.hidden = false;
     return;
   }
 
-  const data = await response.json();
-  renderQuizzes(data.quizzes || []);
+  resultsListContainer.hidden = false;
+  resultsEmptyState.hidden = true;
+
+  results.forEach((result) => {
+    const item = document.createElement("article");
+    item.className = "student-quiz-item";
+
+    const heading = document.createElement("h3");
+    heading.textContent = result.quizTitle;
+
+    const submitted = document.createElement("p");
+    submitted.className = "subtitle";
+    submitted.textContent = `Submitted: ${formatDate(result.submittedAt)}`;
+
+    const status = document.createElement("p");
+    status.className = "subtitle";
+    if (result.resultStatus === "published" && result.score !== null) {
+      status.textContent = `Score: ${result.score}/${result.maxScore}`;
+    } else {
+      status.textContent = "Result: Pending teacher release";
+    }
+
+    item.append(heading, submitted, status);
+    resultsListContainer.appendChild(item);
+  });
+}
+
+async function loadStudentQuizzes() {
+  setMessage("Loading quizzes...");
+
+  const [quizzesResponse, resultsResponse] = await Promise.all([
+    fetch(`${API_BASE}/student/quizzes`, {
+      credentials: "include",
+    }),
+    fetch(`${API_BASE}/student/results`, {
+      credentials: "include",
+    }),
+  ]);
+
+  if (!quizzesResponse.ok || !resultsResponse.ok) {
+    setMessage("Unable to load quizzes. Make sure you are logged in as a student.", true);
+    renderQuizzes([]);
+    renderResults([]);
+    return;
+  }
+
+  const quizzesPayload = await quizzesResponse.json();
+  const resultsPayload = await resultsResponse.json();
+  renderQuizzes(quizzesPayload.quizzes || []);
+  renderResults(resultsPayload.results || []);
   setMessage("");
 }
 
