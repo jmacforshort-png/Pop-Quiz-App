@@ -285,6 +285,31 @@ function createAuthApp({ prisma, jwtSecret }) {
     }
   );
 
+  app.post(
+    "/admin/quizzes/:quizId/publish",
+    requireAuth(jwtSecret),
+    requireRole("admin"),
+    async (req, res) => {
+      try {
+        const quiz = await quizService.publishQuiz(req.auth.sub, req.params.quizId);
+        await auditService.logAction({
+          actorUserId: req.auth.sub,
+          action: AUDIT_ACTIONS.QUIZ_PUBLISHED,
+          targetType: "quiz",
+          targetId: quiz.id,
+          quizId: quiz.id,
+        });
+        return res.status(200).json({ quiz });
+      } catch (error) {
+        if (error instanceof QuizServiceError) {
+          return res.status(error.statusCode).json({ error: error.message });
+        }
+
+        return res.status(500).json({ error: "Unable to publish quiz." });
+      }
+    }
+  );
+
   return app;
 }
 

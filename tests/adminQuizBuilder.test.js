@@ -7,6 +7,7 @@ describe("admin quiz builder ui", () => {
     expect(html).toContain('id="quiz-form"');
     expect(html).toContain('id="draft-select"');
     expect(html).toContain('id="assignment-list"');
+    expect(html).toContain('id="publish-quiz"');
     expect(html).toContain('id="question-cards"');
     expect(html).toContain('src="admin-quizzes.js"');
   });

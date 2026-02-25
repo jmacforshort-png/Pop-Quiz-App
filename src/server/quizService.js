@@ -172,10 +172,49 @@ function createQuizService({ prisma }) {
     });
   }
 
+  async function publishQuiz(adminId, quizId) {
+    const quiz = await prisma.quiz.findFirst({
+      where: { id: quizId, adminId },
+      include: QUIZ_INCLUDE,
+    });
+    if (!quiz) {
+      throw new QuizServiceError(404, "Quiz not found.");
+    }
+
+    if (quiz.status !== "draft") {
+      throw new QuizServiceError(400, "Only draft quizzes can be published.");
+    }
+
+    if (quiz.questions.length !== 5) {
+      throw new QuizServiceError(400, "Quiz must have exactly 5 questions before publishing.");
+    }
+
+    if (!quiz.assignments.length) {
+      throw new QuizServiceError(400, "Quiz needs at least one assigned block before publishing.");
+    }
+
+    const hasInvalidSchedule = quiz.assignments.some(
+      (assignment) => new Date(assignment.visibleUntilUtc) <= new Date(assignment.visibleFromUtc)
+    );
+    if (hasInvalidSchedule) {
+      throw new QuizServiceError(400, "Quiz has invalid assignment schedules.");
+    }
+
+    return prisma.quiz.update({
+      where: { id: quizId },
+      data: {
+        status: "published",
+        publishedAt: new Date(),
+      },
+      include: QUIZ_INCLUDE,
+    });
+  }
+
   return {
     createDraftQuiz,
     getQuizById,
     listQuizzes,
+    publishQuiz,
     updateDraftQuiz,
   };
 }

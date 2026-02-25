@@ -55,6 +55,7 @@ function createQuizPrismaMock() {
           description: data.description,
           status: data.status,
           createdAt: new Date(),
+          publishedAt: null,
           assignments: data.assignments.create.map((assignment) => ({
             classId: assignment.classId,
             visibleFromUtc: assignment.visibleFromUtc,
@@ -88,19 +89,33 @@ function createQuizPrismaMock() {
       },
       update: async ({ where, data }) => {
         const quiz = quizzes.find((item) => item.id === where.id);
-        quiz.title = data.title;
-        quiz.description = data.description;
-        quiz.assignments = data.assignments.create.map((assignment) => ({
-          classId: assignment.classId,
-          visibleFromUtc: assignment.visibleFromUtc,
-          visibleUntilUtc: assignment.visibleUntilUtc,
-          class: classes.find((classItem) => classItem.id === assignment.classId),
-        }));
-        quiz.questions = data.questions.create.map((question) => ({
-          orderIndex: question.orderIndex,
-          prompt: question.prompt,
-          choices: question.choices.create,
-        }));
+        if (data.title !== undefined) {
+          quiz.title = data.title;
+        }
+        if (data.description !== undefined) {
+          quiz.description = data.description;
+        }
+        if (data.assignments?.create) {
+          quiz.assignments = data.assignments.create.map((assignment) => ({
+            classId: assignment.classId,
+            visibleFromUtc: assignment.visibleFromUtc,
+            visibleUntilUtc: assignment.visibleUntilUtc,
+            class: classes.find((classItem) => classItem.id === assignment.classId),
+          }));
+        }
+        if (data.questions?.create) {
+          quiz.questions = data.questions.create.map((question) => ({
+            orderIndex: question.orderIndex,
+            prompt: question.prompt,
+            choices: question.choices.create,
+          }));
+        }
+        if (data.status) {
+          quiz.status = data.status;
+        }
+        if (data.publishedAt) {
+          quiz.publishedAt = data.publishedAt;
+        }
         return quiz;
       },
     },
@@ -147,6 +162,28 @@ describe("quiz service", () => {
 
     expect(updated.title).toBe("Updated Quiz");
     expect(updated.questions).toHaveLength(5);
+  });
+
+  it("publishes a draft quiz", async () => {
+    const prisma = createQuizPrismaMock();
+    const quizService = createQuizService({ prisma });
+    const created = await quizService.createDraftQuiz("admin_1", validQuizPayload());
+
+    const published = await quizService.publishQuiz("admin_1", created.id);
+
+    expect(published.status).toBe("published");
+    expect(published.publishedAt).toBeInstanceOf(Date);
+  });
+
+  it("rejects publishing non-draft quizzes", async () => {
+    const prisma = createQuizPrismaMock();
+    const quizService = createQuizService({ prisma });
+    const created = await quizService.createDraftQuiz("admin_1", validQuizPayload());
+    await quizService.publishQuiz("admin_1", created.id);
+
+    await expect(quizService.publishQuiz("admin_1", created.id)).rejects.toMatchObject({
+      statusCode: 400,
+    });
   });
 
   it("rejects invalid fixed quiz structure", async () => {

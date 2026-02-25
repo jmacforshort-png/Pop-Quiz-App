@@ -9,11 +9,16 @@ const quizMessage = document.getElementById("quiz-message");
 const draftSelect = document.getElementById("draft-select");
 const refreshQuizzesButton = document.getElementById("refresh-quizzes");
 const newQuizButton = document.getElementById("new-quiz");
+const publishQuizButton = document.getElementById("publish-quiz");
 
 const CHOICE_LABELS = ["A", "B", "C", "D"];
 const QUESTION_COUNT = 5;
 
 let editingQuizId = null;
+
+function syncActionState() {
+  publishQuizButton.disabled = !editingQuizId;
+}
 
 function setMessage(text, isError = false) {
   quizMessage.textContent = text;
@@ -164,6 +169,7 @@ function resetQuizForm() {
   quizForm.reset();
   renderQuestionCards();
   draftSelect.value = "";
+  syncActionState();
   setMessage("Ready to create a new draft.");
 }
 
@@ -178,6 +184,7 @@ async function loadQuizIntoForm(quizId) {
   const quiz = data.quiz;
 
   editingQuizId = quiz.id;
+  syncActionState();
   quizTitleInput.value = quiz.title;
   quizDescriptionInput.value = quiz.description || "";
 
@@ -328,6 +335,7 @@ quizForm.addEventListener("submit", async (event) => {
   await loadDrafts();
   draftSelect.value = data.quiz.id;
   editingQuizId = data.quiz.id;
+  syncActionState();
   setMessage(editingQuizId ? "Quiz draft saved." : "Quiz draft created.");
 });
 
@@ -349,5 +357,28 @@ newQuizButton.addEventListener("click", () => {
   resetQuizForm();
 });
 
+publishQuizButton.addEventListener("click", async () => {
+  if (!editingQuizId) {
+    setMessage("Load a draft first, then publish.", true);
+    return;
+  }
+
+  const response = await fetch(`${API_BASE}/admin/quizzes/${editingQuizId}/publish`, {
+    method: "POST",
+    credentials: "include",
+  });
+
+  if (!response.ok) {
+    const errorPayload = await response.json().catch(() => ({}));
+    setMessage(errorPayload.error || "Unable to publish quiz.", true);
+    return;
+  }
+
+  await loadDrafts();
+  resetQuizForm();
+  setMessage("Quiz published.");
+});
+
 renderQuestionCards();
+syncActionState();
 loadAssignments().then(loadDrafts);
