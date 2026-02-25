@@ -34,6 +34,9 @@ Admin class routes (admin role + session required):
 - `POST /admin/students/:studentId/reset-password` with optional `{ "newPassword": "secret123" }`
 - `GET /admin/audit-logs` (optional query: `limit`)
 - `POST /admin/quizzes` for fixed-format draft quiz creation
+- `GET /admin/quizzes` list admin quizzes
+- `GET /admin/quizzes/:quizId` load a quiz for editing
+- `PUT /admin/quizzes/:quizId` update a draft quiz
 
 ## Admin Class UI
 

@@ -237,6 +237,54 @@ function createAuthApp({ prisma, jwtSecret }) {
     }
   });
 
+  app.get("/admin/quizzes", requireAuth(jwtSecret), requireRole("admin"), async (req, res) => {
+    const quizzes = await quizService.listQuizzes(req.auth.sub);
+    return res.status(200).json({ quizzes });
+  });
+
+  app.get(
+    "/admin/quizzes/:quizId",
+    requireAuth(jwtSecret),
+    requireRole("admin"),
+    async (req, res) => {
+      try {
+        const quiz = await quizService.getQuizById(req.auth.sub, req.params.quizId);
+        return res.status(200).json({ quiz });
+      } catch (error) {
+        if (error instanceof QuizServiceError) {
+          return res.status(error.statusCode).json({ error: error.message });
+        }
+
+        return res.status(500).json({ error: "Unable to load quiz." });
+      }
+    }
+  );
+
+  app.put(
+    "/admin/quizzes/:quizId",
+    requireAuth(jwtSecret),
+    requireRole("admin"),
+    async (req, res) => {
+      try {
+        const quiz = await quizService.updateDraftQuiz(req.auth.sub, req.params.quizId, req.body);
+        await auditService.logAction({
+          actorUserId: req.auth.sub,
+          action: AUDIT_ACTIONS.QUIZ_DRAFT_UPDATED,
+          targetType: "quiz",
+          targetId: quiz.id,
+          quizId: quiz.id,
+        });
+        return res.status(200).json({ quiz });
+      } catch (error) {
+        if (error instanceof QuizServiceError) {
+          return res.status(error.statusCode).json({ error: error.message });
+        }
+
+        return res.status(500).json({ error: "Unable to update quiz." });
+      }
+    }
+  );
+
   return app;
 }
 

@@ -24,6 +24,17 @@
 
       <section class="card admin-layout">
         <section class="admin-section">
+          <div class="section-head">
+            <h2>Existing Drafts</h2>
+            <button id="refresh-quizzes" class="btn secondary" type="button">Refresh</button>
+          </div>
+          <select id="draft-select">
+            <option value="">Select a draft to edit</option>
+          </select>
+          <p class="subtitle">Choose a draft quiz to load into the form.</p>
+        </section>
+
+        <section class="admin-section">
           <h2>Create New Quiz</h2>
           <form id="quiz-form" class="quiz-form">
             <label>
@@ -45,6 +56,7 @@
 
             <div class="row-actions">
               <button type="submit" class="btn primary">Save Draft Quiz</button>
+              <button id="new-quiz" type="button" class="btn secondary">New Quiz</button>
             </div>
           </form>
           <p id="quiz-message" class="form-message" aria-live="polite"></p>

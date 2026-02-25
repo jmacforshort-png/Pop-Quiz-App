@@ -30,10 +30,12 @@ function validQuizPayload() {
 
 function createQuizPrismaMock() {
   const classes = [
-    { id: "class_1", adminId: "admin_1" },
-    { id: "class_2", adminId: "admin_1" },
-    { id: "class_3", adminId: "admin_2" },
+    { id: "class_1", adminId: "admin_1", name: "Biology", blockNumber: 1 },
+    { id: "class_2", adminId: "admin_1", name: "Chemistry", blockNumber: 2 },
+    { id: "class_3", adminId: "admin_2", name: "Physics", blockNumber: 1 },
   ];
+
+  const quizzes = [];
 
   return {
     class: {
@@ -46,17 +48,60 @@ function createQuizPrismaMock() {
     },
     quiz: {
       create: async ({ data }) => {
-        return {
-          id: "quiz_1",
-          ...data,
-          assignments: data.assignments.create,
+        const quiz = {
+          id: `quiz_${quizzes.length + 1}`,
+          adminId: data.adminId,
+          title: data.title,
+          description: data.description,
+          status: data.status,
+          createdAt: new Date(),
+          assignments: data.assignments.create.map((assignment) => ({
+            classId: assignment.classId,
+            visibleFromUtc: assignment.visibleFromUtc,
+            visibleUntilUtc: assignment.visibleUntilUtc,
+            class: classes.find((classItem) => classItem.id === assignment.classId),
+          })),
           questions: data.questions.create.map((question) => ({
-            id: `question_${question.orderIndex}`,
             orderIndex: question.orderIndex,
             prompt: question.prompt,
             choices: question.choices.create,
           })),
         };
+        quizzes.push(quiz);
+        return quiz;
+      },
+      findMany: async ({ where }) => {
+        return quizzes.filter((quiz) => quiz.adminId === where.adminId);
+      },
+      findFirst: async ({ where }) => {
+        return (
+          quizzes.find((quiz) => {
+            if (where.id && quiz.id !== where.id) {
+              return false;
+            }
+            if (where.adminId && quiz.adminId !== where.adminId) {
+              return false;
+            }
+            return true;
+          }) ?? null
+        );
+      },
+      update: async ({ where, data }) => {
+        const quiz = quizzes.find((item) => item.id === where.id);
+        quiz.title = data.title;
+        quiz.description = data.description;
+        quiz.assignments = data.assignments.create.map((assignment) => ({
+          classId: assignment.classId,
+          visibleFromUtc: assignment.visibleFromUtc,
+          visibleUntilUtc: assignment.visibleUntilUtc,
+          class: classes.find((classItem) => classItem.id === assignment.classId),
+        }));
+        quiz.questions = data.questions.create.map((question) => ({
+          orderIndex: question.orderIndex,
+          prompt: question.prompt,
+          choices: question.choices.create,
+        }));
+        return quiz;
       },
     },
   };
@@ -75,6 +120,33 @@ describe("quiz service", () => {
     expect(quiz.questions).toHaveLength(5);
     expect(quiz.questions[0].orderIndex).toBe(1);
     expect(quiz.questions[0].choices).toHaveLength(4);
+  });
+
+  it("lists and gets quizzes by admin ownership", async () => {
+    const prisma = createQuizPrismaMock();
+    const quizService = createQuizService({ prisma });
+
+    const created = await quizService.createDraftQuiz("admin_1", validQuizPayload());
+
+    const list = await quizService.listQuizzes("admin_1");
+    expect(list).toHaveLength(1);
+
+    const loaded = await quizService.getQuizById("admin_1", created.id);
+    expect(loaded.id).toBe(created.id);
+  });
+
+  it("updates existing draft quiz", async () => {
+    const prisma = createQuizPrismaMock();
+    const quizService = createQuizService({ prisma });
+
+    const created = await quizService.createDraftQuiz("admin_1", validQuizPayload());
+    const payload = validQuizPayload();
+    payload.title = "Updated Quiz";
+
+    const updated = await quizService.updateDraftQuiz("admin_1", created.id, payload);
+
+    expect(updated.title).toBe("Updated Quiz");
+    expect(updated.questions).toHaveLength(5);
   });
 
   it("rejects invalid fixed quiz structure", async () => {
