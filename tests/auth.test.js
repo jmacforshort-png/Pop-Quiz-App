@@ -7,7 +7,7 @@ function createPrismaMock() {
   return {
     user: {
       create: async ({ data }) => {
-        if (users.find((user) => user.username === data.username)) {
+        if (users.find((user) => user.usernameNormalized === data.usernameNormalized)) {
           const error = new Error("Unique constraint failed.");
           error.code = "P2002";
           throw error;
@@ -16,6 +16,7 @@ function createPrismaMock() {
         const newUser = {
           id: `user_${users.length + 1}`,
           username: data.username,
+          usernameNormalized: data.usernameNormalized,
           passwordHash: data.passwordHash,
           role: data.role,
           classId: data.classId ?? null,
@@ -25,7 +26,11 @@ function createPrismaMock() {
         return newUser;
       },
       findUnique: async ({ where }) => {
-        return users.find((user) => user.username === where.username) ?? null;
+        if (where.usernameNormalized) {
+          return users.find((user) => user.usernameNormalized === where.usernameNormalized) ?? null;
+        }
+
+        return null;
       },
     },
     users,
@@ -47,6 +52,7 @@ describe("auth service", () => {
     expect(result.token).toBeTypeOf("string");
 
     const savedUser = prisma.users[0];
+    expect(savedUser.usernameNormalized).toBe("student_one");
     expect(savedUser.passwordHash).not.toBe("secret1");
     expect(await bcrypt.compare("secret1", savedUser.passwordHash)).toBe(true);
   });
@@ -77,7 +83,7 @@ describe("auth service", () => {
 
     await expect(
       authService.signup({
-        username: "student_three",
+        username: "Student_Three",
         password: "secret2",
       })
     ).rejects.toMatchObject({
@@ -91,7 +97,7 @@ describe("auth service", () => {
     const authService = createAuthService({ prisma, jwtSecret: "test-secret" });
 
     await authService.signup({
-      username: "student_four",
+      username: " Student_Four ",
       password: "secret1",
     });
 
@@ -100,7 +106,7 @@ describe("auth service", () => {
       password: "secret1",
     });
 
-    expect(result.user.username).toBe("student_four");
+    expect(result.user.username).toBe("Student_Four");
     expect(result.token).toBeTypeOf("string");
   });
 
