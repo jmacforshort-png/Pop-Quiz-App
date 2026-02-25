@@ -45,6 +45,18 @@ describe("auth middleware", () => {
     expect(req.auth.sub).toBe("user_1");
     expect(req.auth.role).toBe("admin");
   });
+
+  it("rejects invalid session token", () => {
+    const middleware = requireAuth("test-secret");
+    const req = { cookies: { [SESSION_COOKIE]: "invalid.token.value" } };
+    const res = createMockRes();
+    const next = vi.fn();
+
+    middleware(req, res, next);
+
+    expect(res.statusCode).toBe(401);
+    expect(next).not.toHaveBeenCalled();
+  });
 });
 
 describe("role middleware", () => {
