@@ -22,6 +22,13 @@ function toQuestionCreateInput(questions) {
   }));
 }
 
+function defaultAssignmentWindow() {
+  const visibleFromUtc = new Date();
+  const visibleUntilUtc = new Date(visibleFromUtc.getTime() + 365 * 24 * 60 * 60 * 1000);
+
+  return { visibleFromUtc, visibleUntilUtc };
+}
+
 function createQuizService({ prisma }) {
   if (!prisma) {
     throw new Error("createQuizService requires prisma client.");
@@ -38,17 +45,33 @@ function createQuizService({ prisma }) {
       throw new QuizServiceError(400, fixedValidation.errors[0] ?? "Invalid quiz structure.");
     }
 
+    const classIds = [...new Set(parsed.data.assignments.map((assignment) => assignment.classId))];
+    const adminClasses = await prisma.class.findMany({
+      where: { adminId, id: { in: classIds } },
+      select: { id: true },
+    });
+    if (adminClasses.length !== classIds.length) {
+      throw new QuizServiceError(403, "One or more assigned blocks are invalid.");
+    }
+
     return prisma.quiz.create({
       data: {
         adminId,
         title: parsed.data.title,
         description: parsed.data.description,
         status: "draft",
+        assignments: {
+          create: classIds.map((classId) => ({
+            classId,
+            ...defaultAssignmentWindow(),
+          })),
+        },
         questions: {
           create: toQuestionCreateInput(parsed.data.questions),
         },
       },
       include: {
+        assignments: true,
         questions: {
           include: {
             choices: true,

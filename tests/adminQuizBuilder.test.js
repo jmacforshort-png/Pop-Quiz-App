@@ -5,6 +5,7 @@ describe("admin quiz builder ui", () => {
     const html = await fs.readFile("admin-quizzes.html", "utf8");
 
     expect(html).toContain('id="quiz-form"');
+    expect(html).toContain('id="assignment-list"');
     expect(html).toContain('id="question-cards"');
     expect(html).toContain('src="admin-quizzes.js"');
   });

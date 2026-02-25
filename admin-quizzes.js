@@ -3,6 +3,7 @@ const API_BASE = window.localStorage.getItem("popQuizApiBase") || "http://localh
 const quizForm = document.getElementById("quiz-form");
 const quizTitleInput = document.getElementById("quiz-title");
 const quizDescriptionInput = document.getElementById("quiz-description");
+const assignmentList = document.getElementById("assignment-list");
 const questionCards = document.getElementById("question-cards");
 const quizMessage = document.getElementById("quiz-message");
 
@@ -69,12 +70,55 @@ function renderQuestionCards() {
   }
 }
 
+function renderAssignments(classes) {
+  assignmentList.innerHTML = "";
+
+  if (!classes.length) {
+    assignmentList.textContent = "No classes found. Create classes first in the Class Manager.";
+    return;
+  }
+
+  classes.forEach((classItem) => {
+    const label = document.createElement("label");
+    label.className = "assignment-option";
+
+    const checkbox = document.createElement("input");
+    checkbox.type = "checkbox";
+    checkbox.dataset.role = "assignment";
+    checkbox.value = classItem.id;
+
+    const text = document.createElement("span");
+    text.textContent = `${classItem.name} (Block ${classItem.blockNumber})`;
+
+    label.append(checkbox, text);
+    assignmentList.appendChild(label);
+  });
+}
+
+async function loadAssignments() {
+  const response = await fetch(`${API_BASE}/admin/classes`, { credentials: "include" });
+  if (!response.ok) {
+    setMessage("Unable to load classes for assignment.", true);
+    renderAssignments([]);
+    return;
+  }
+
+  const data = await response.json();
+  renderAssignments(data.classes || []);
+}
+
 function buildQuizPayload() {
   const cards = Array.from(document.querySelectorAll(".question-card"));
+  const assignmentInputs = Array.from(
+    document.querySelectorAll('[data-role="assignment"]:checked')
+  );
 
   return {
     title: quizTitleInput.value,
     description: quizDescriptionInput.value || undefined,
+    assignments: assignmentInputs.map((input) => ({
+      classId: input.value,
+    })),
     questions: cards.map((card) => {
       const prompt = card.querySelector('[data-role="prompt"]').value;
       const answerKey = card.querySelector('[data-role="answerKey"]').value;
@@ -96,6 +140,11 @@ quizForm.addEventListener("submit", async (event) => {
   event.preventDefault();
   setMessage("Saving quiz draft...");
 
+  if (!document.querySelector('[data-role="assignment"]:checked')) {
+    setMessage("Select at least one block before saving.", true);
+    return;
+  }
+
   const response = await fetch(`${API_BASE}/admin/quizzes`, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
@@ -115,3 +164,4 @@ quizForm.addEventListener("submit", async (event) => {
 });
 
 renderQuestionCards();
+loadAssignments();
