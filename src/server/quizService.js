@@ -241,10 +241,98 @@ function createQuizService({ prisma }) {
     });
   }
 
+  async function getQuizSummaryReport(adminId, { blockNumber } = {}) {
+    const where = { adminId };
+    if (Number.isInteger(blockNumber)) {
+      where.assignments = {
+        some: {
+          class: { blockNumber },
+        },
+      };
+    }
+
+    const quizzes = await prisma.quiz.findMany({
+      where,
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        title: true,
+        status: true,
+        resultStatus: true,
+        assignments: {
+          select: {
+            class: {
+              select: {
+                id: true,
+                name: true,
+                blockNumber: true,
+                students: {
+                  select: { id: true },
+                },
+              },
+            },
+          },
+        },
+        attempts: {
+          select: {
+            score: true,
+            student: {
+              select: {
+                id: true,
+                classId: true,
+              },
+            },
+          },
+        },
+      },
+    });
+
+    return quizzes.map((quiz) => {
+      const matchingAssignments = Number.isInteger(blockNumber)
+        ? quiz.assignments.filter((assignment) => assignment.class.blockNumber === blockNumber)
+        : quiz.assignments;
+
+      const assignedStudentIds = new Set();
+      matchingAssignments.forEach((assignment) => {
+        assignment.class.students.forEach((student) => {
+          assignedStudentIds.add(student.id);
+        });
+      });
+
+      const matchingAttempts = quiz.attempts.filter((attempt) => {
+        if (Number.isInteger(blockNumber)) {
+          return matchingAssignments.some(
+            (assignment) => assignment.class.id === attempt.student.classId
+          );
+        }
+        return assignedStudentIds.has(attempt.student.id);
+      });
+
+      const submittedCount = matchingAttempts.length;
+      const averageScore = submittedCount
+        ? matchingAttempts.reduce((total, attempt) => total + attempt.score, 0) / submittedCount
+        : null;
+
+      return {
+        quizId: quiz.id,
+        title: quiz.title,
+        status: quiz.status,
+        resultStatus: quiz.resultStatus,
+        assignedCount: assignedStudentIds.size,
+        submittedCount,
+        averageScore,
+        blockNumbers: [
+          ...new Set(matchingAssignments.map((assignment) => assignment.class.blockNumber)),
+        ],
+      };
+    });
+  }
+
   return {
     createDraftQuiz,
     getQuizById,
     listQuizzes,
+    getQuizSummaryReport,
     publishResults,
     publishQuiz,
     updateDraftQuiz,

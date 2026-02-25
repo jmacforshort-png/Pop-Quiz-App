@@ -320,6 +320,28 @@ function createAuthApp({ prisma, jwtSecret }) {
   });
 
   app.get(
+    "/admin/reports/quiz-summary",
+    requireAuth(jwtSecret),
+    requireRole("admin"),
+    async (req, res) => {
+      const rawBlockNumber = req.query.blockNumber;
+      const blockNumber =
+        rawBlockNumber === undefined || rawBlockNumber === ""
+          ? undefined
+          : Number.parseInt(rawBlockNumber, 10);
+
+      if (rawBlockNumber !== undefined && rawBlockNumber !== "" && !Number.isInteger(blockNumber)) {
+        return res.status(400).json({ error: "blockNumber must be a valid integer." });
+      }
+
+      const report = await quizService.getQuizSummaryReport(req.auth.sub, {
+        blockNumber,
+      });
+      return res.status(200).json({ report });
+    }
+  );
+
+  app.get(
     "/admin/quizzes/:quizId",
     requireAuth(jwtSecret),
     requireRole("admin"),

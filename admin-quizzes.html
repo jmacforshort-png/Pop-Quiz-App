@@ -56,6 +56,33 @@
         </section>
 
         <section class="admin-section">
+          <div class="section-head">
+            <h2>Reporting By Block</h2>
+          </div>
+          <div class="row-actions">
+            <label>
+              Block
+              <select id="report-block-filter">
+                <option value="">All blocks</option>
+              </select>
+            </label>
+            <button id="refresh-report" class="btn secondary" type="button">Refresh Report</button>
+          </div>
+          <div id="report-empty" class="empty-state">No report data available yet.</div>
+          <table id="report-table" class="classes-table" hidden>
+            <thead>
+              <tr>
+                <th>Quiz</th>
+                <th>Assigned</th>
+                <th>Submitted</th>
+                <th>Average</th>
+              </tr>
+            </thead>
+            <tbody id="report-body"></tbody>
+          </table>
+        </section>
+
+        <section class="admin-section">
           <h2>Create New Quiz</h2>
           <form id="quiz-form" class="quiz-form">
             <label>

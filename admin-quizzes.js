@@ -13,12 +13,18 @@ const publishQuizButton = document.getElementById("publish-quiz");
 const quizListEmpty = document.getElementById("quiz-list-empty");
 const quizListTable = document.getElementById("quiz-list-table");
 const quizListBody = document.getElementById("quiz-list-body");
+const reportBlockFilter = document.getElementById("report-block-filter");
+const refreshReportButton = document.getElementById("refresh-report");
+const reportEmpty = document.getElementById("report-empty");
+const reportTable = document.getElementById("report-table");
+const reportBody = document.getElementById("report-body");
 
 const CHOICE_LABELS = ["A", "B", "C", "D"];
 const QUESTION_COUNT = 5;
 
 let editingQuizId = null;
 let cachedQuizzes = [];
+let cachedClasses = [];
 
 function syncActionState() {
   publishQuizButton.disabled = !editingQuizId;
@@ -137,6 +143,25 @@ function renderAssignments(classes) {
   });
 }
 
+function renderBlockFilterOptions(classes) {
+  const previousValue = reportBlockFilter.value;
+  const blockNumbers = [...new Set(classes.map((classItem) => classItem.blockNumber))].sort(
+    (left, right) => left - right
+  );
+
+  reportBlockFilter.innerHTML = '<option value="">All blocks</option>';
+  blockNumbers.forEach((blockNumber) => {
+    const option = document.createElement("option");
+    option.value = String(blockNumber);
+    option.textContent = `Block ${blockNumber}`;
+    reportBlockFilter.appendChild(option);
+  });
+
+  if (previousValue && blockNumbers.includes(Number(previousValue))) {
+    reportBlockFilter.value = previousValue;
+  }
+}
+
 async function loadAssignments() {
   const response = await fetch(`${API_BASE}/admin/classes`, { credentials: "include" });
   if (!response.ok) {
@@ -146,7 +171,58 @@ async function loadAssignments() {
   }
 
   const data = await response.json();
-  renderAssignments(data.classes || []);
+  cachedClasses = data.classes || [];
+  renderAssignments(cachedClasses);
+  renderBlockFilterOptions(cachedClasses);
+}
+
+function renderReportRows(reportRows) {
+  reportBody.innerHTML = "";
+
+  if (!reportRows.length) {
+    reportTable.hidden = true;
+    reportEmpty.hidden = false;
+    return;
+  }
+
+  reportTable.hidden = false;
+  reportEmpty.hidden = true;
+
+  reportRows.forEach((row) => {
+    const tableRow = document.createElement("tr");
+
+    const titleCell = document.createElement("td");
+    titleCell.textContent = row.title;
+
+    const assignedCell = document.createElement("td");
+    assignedCell.textContent = String(row.assignedCount);
+
+    const submittedCell = document.createElement("td");
+    submittedCell.textContent = String(row.submittedCount);
+
+    const averageCell = document.createElement("td");
+    averageCell.textContent = row.averageScore === null ? "-" : Number(row.averageScore).toFixed(2);
+
+    tableRow.append(titleCell, assignedCell, submittedCell, averageCell);
+    reportBody.appendChild(tableRow);
+  });
+}
+
+async function loadReport() {
+  const query = reportBlockFilter.value
+    ? `?blockNumber=${encodeURIComponent(reportBlockFilter.value)}`
+    : "";
+  const response = await fetch(`${API_BASE}/admin/reports/quiz-summary${query}`, {
+    credentials: "include",
+  });
+  if (!response.ok) {
+    setMessage("Unable to load report.", true);
+    renderReportRows([]);
+    return;
+  }
+
+  const data = await response.json();
+  renderReportRows(data.report || []);
 }
 
 function renderQuizList(quizzes) {
@@ -429,6 +505,7 @@ draftSelect.addEventListener("change", async () => {
 
 refreshQuizzesButton.addEventListener("click", async () => {
   await loadDrafts();
+  await loadReport();
   setMessage("Draft list refreshed.");
 });
 
@@ -488,6 +565,7 @@ quizListBody.addEventListener("click", async (event) => {
     }
 
     await loadDrafts();
+    await loadReport();
     if (editingQuizId === quizId) {
       resetQuizForm();
     }
@@ -507,10 +585,20 @@ quizListBody.addEventListener("click", async (event) => {
     }
 
     await loadDrafts();
+    await loadReport();
     setMessage("Results published.");
   }
 });
 
+refreshReportButton.addEventListener("click", async () => {
+  await loadReport();
+  setMessage("Report refreshed.");
+});
+
+reportBlockFilter.addEventListener("change", async () => {
+  await loadReport();
+});
+
 renderQuestionCards();
 syncActionState();
-loadAssignments().then(loadDrafts);
+loadAssignments().then(loadDrafts).then(loadReport);
