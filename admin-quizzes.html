@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pop Quiz Builder</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="admin.css" />
+  </head>
+  <body>
+    <main class="app admin-app">
+      <header class="hero">
+        <p class="kicker">Teacher Panel</p>
+        <h1>Quiz Builder</h1>
+        <p class="subtitle">Create fixed 5-question quizzes with A/B/C/D answers and answer key.</p>
+        <p class="subtitle"><a href="admin.html">Back to Class Manager</a></p>
+      </header>
+
+      <section class="card admin-layout">
+        <section class="admin-section">
+          <h2>Create New Quiz</h2>
+          <form id="quiz-form" class="quiz-form">
+            <label>
+              Quiz Title
+              <input id="quiz-title" type="text" placeholder="Unit 1 Quiz" required />
+            </label>
+            <label>
+              Description (optional)
+              <textarea id="quiz-description" rows="2" placeholder="Short instructions"></textarea>
+            </label>
+
+            <div id="question-cards" class="question-cards"></div>
+
+            <div class="row-actions">
+              <button type="submit" class="btn primary">Save Draft Quiz</button>
+            </div>
+          </form>
+          <p id="quiz-message" class="form-message" aria-live="polite"></p>
+        </section>
+      </section>
+    </main>
+
+    <script src="admin-quizzes.js"></script>
+  </body>
+</html>
