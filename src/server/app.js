@@ -129,6 +129,21 @@ function createAuthApp({ prisma, jwtSecret }) {
     }
   );
 
+  app.get("/student/results", requireAuth(jwtSecret), requireRole("student"), async (req, res) => {
+    try {
+      const results = await studentQuizService.listStudentResults({
+        studentId: req.auth.sub,
+      });
+      return res.status(200).json({ results });
+    } catch (error) {
+      if (error instanceof StudentQuizServiceError) {
+        return res.status(error.statusCode).json({ error: error.message });
+      }
+
+      return res.status(500).json({ error: "Unable to load student results." });
+    }
+  });
+
   app.post(
     "/student/quizzes/:quizId/submit",
     requireAuth(jwtSecret),

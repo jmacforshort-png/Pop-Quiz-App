@@ -209,8 +209,45 @@ function createStudentQuizService({ prisma }) {
     };
   }
 
+  async function listStudentResults({ studentId }) {
+    if (!studentId) {
+      throw new StudentQuizServiceError(400, "Student identity is required.");
+    }
+
+    const attempts = await prisma.attempt.findMany({
+      where: { studentId },
+      orderBy: { submittedAt: "desc" },
+      select: {
+        id: true,
+        submittedAt: true,
+        score: true,
+        maxScore: true,
+        quiz: {
+          select: {
+            id: true,
+            title: true,
+            resultStatus: true,
+            resultsPublishedAt: true,
+          },
+        },
+      },
+    });
+
+    return attempts.map((attempt) => ({
+      id: attempt.id,
+      quizId: attempt.quiz.id,
+      quizTitle: attempt.quiz.title,
+      submittedAt: attempt.submittedAt,
+      resultStatus: attempt.quiz.resultStatus,
+      resultsPublishedAt: attempt.quiz.resultsPublishedAt,
+      score: attempt.quiz.resultStatus === "published" ? attempt.score : null,
+      maxScore: attempt.maxScore,
+    }));
+  }
+
   return {
     getQuizForStudent,
+    listStudentResults,
     listAvailableQuizzes,
     submitQuizAttempt,
   };
