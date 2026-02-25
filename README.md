@@ -39,6 +39,7 @@ Admin class routes (admin role + session required):
 - `PUT /admin/quizzes/:quizId` update a draft quiz
 - `POST /admin/quizzes/:quizId/publish` publish a draft quiz
 - `GET /student/quizzes` list currently available published quizzes for the logged-in student
+- `GET /student/quizzes/:quizId` fetch student-safe quiz payload (no answer key fields)
 
 ## Admin Class UI
 
