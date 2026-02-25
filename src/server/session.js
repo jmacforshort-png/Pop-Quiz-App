@@ -9,6 +9,7 @@ function issueSessionToken(user, jwtSecret) {
       sub: user.id,
       username: user.username,
       role: user.role,
+      classId: user.classId ?? null,
     },
     jwtSecret,
     { expiresIn: SESSION_TTL }

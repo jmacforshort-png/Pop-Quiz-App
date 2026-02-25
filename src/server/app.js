@@ -4,6 +4,7 @@ const { AUDIT_ACTIONS, createAuditService } = require("./auditService");
 const { createAuthService, AuthServiceError } = require("./authService");
 const { requireAuth, requireRole } = require("./authMiddleware");
 const { createClassService, ClassServiceError } = require("./classService");
+const { createStudentQuizService, StudentQuizServiceError } = require("./studentQuizService");
 const { createStudentService, StudentServiceError } = require("./studentService");
 const { createQuizService, QuizServiceError } = require("./quizService");
 const { attachSessionCookie, clearSessionCookie } = require("./session");
@@ -12,6 +13,7 @@ function createAuthApp({ prisma, jwtSecret }) {
   const authService = createAuthService({ prisma, jwtSecret });
   const auditService = createAuditService({ prisma });
   const classService = createClassService({ prisma });
+  const studentQuizService = createStudentQuizService({ prisma });
   const studentService = createStudentService({ prisma });
   const quizService = createQuizService({ prisma });
   const app = express();
@@ -73,6 +75,7 @@ function createAuthApp({ prisma, jwtSecret }) {
         id: req.auth.sub,
         username: req.auth.username,
         role: req.auth.role,
+        classId: req.auth.classId ?? null,
       },
     });
   });
@@ -89,6 +92,21 @@ function createAuthApp({ prisma, jwtSecret }) {
       return res.status(200).json({ ok: true });
     }
   );
+
+  app.get("/student/quizzes", requireAuth(jwtSecret), requireRole("student"), async (req, res) => {
+    try {
+      const quizzes = await studentQuizService.listAvailableQuizzes({
+        classId: req.auth.classId,
+      });
+      return res.status(200).json({ quizzes });
+    } catch (error) {
+      if (error instanceof StudentQuizServiceError) {
+        return res.status(error.statusCode).json({ error: error.message });
+      }
+
+      return res.status(500).json({ error: "Unable to load available quizzes." });
+    }
+  });
 
   app.get("/admin/classes", requireAuth(jwtSecret), requireRole("admin"), async (req, res) => {
     const classes = await classService.listClasses(req.auth.sub);
