@@ -18,7 +18,11 @@ function formatDate(value) {
     return "Unknown";
   }
 
-  return date.toLocaleString();
+  return new Intl.DateTimeFormat(undefined, {
+    dateStyle: "medium",
+    timeStyle: "short",
+    timeZoneName: "short",
+  }).format(date);
 }
 
 function renderQuizzes(quizzes) {

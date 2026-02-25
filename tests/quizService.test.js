@@ -289,6 +289,17 @@ describe("quiz service", () => {
     });
   });
 
+  it("rejects assignment timestamps without timezone offset", async () => {
+    const prisma = createQuizPrismaMock();
+    const quizService = createQuizService({ prisma });
+    const payload = validQuizPayload();
+    payload.assignments[0].visibleFromUtc = "2026-02-25T18:00:00";
+
+    await expect(quizService.createDraftQuiz("admin_1", payload)).rejects.toMatchObject({
+      statusCode: 400,
+    });
+  });
+
   it("returns quiz summary report with assigned/submitted/average", async () => {
     const prisma = {
       quiz: {

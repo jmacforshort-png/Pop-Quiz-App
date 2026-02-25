@@ -1,5 +1,6 @@
 const { baseQuizSchema } = require("./quizSchemas");
 const { validateFixedQuizPayload } = require("../validation/quizPayload");
+const { parseUtcTimestamp } = require("./time");
 
 class QuizServiceError extends Error {
   constructor(statusCode, message) {
@@ -47,14 +48,16 @@ async function validateAndBuildQuizData(prisma, adminId, payload) {
   }
 
   const scheduleEntries = parsed.data.assignments.map((assignment) => {
-    const visibleFromUtc = new Date(assignment.visibleFromUtc);
-    const visibleUntilUtc = new Date(assignment.visibleUntilUtc);
+    let visibleFromUtc;
+    let visibleUntilUtc;
+    try {
+      visibleFromUtc = parseUtcTimestamp(assignment.visibleFromUtc, "visibleFromUtc");
+      visibleUntilUtc = parseUtcTimestamp(assignment.visibleUntilUtc, "visibleUntilUtc");
+    } catch (error) {
+      throw new QuizServiceError(400, error.message);
+    }
 
-    if (
-      Number.isNaN(visibleFromUtc.getTime()) ||
-      Number.isNaN(visibleUntilUtc.getTime()) ||
-      visibleUntilUtc <= visibleFromUtc
-    ) {
+    if (visibleUntilUtc <= visibleFromUtc) {
       throw new QuizServiceError(
         400,
         "Each block assignment needs a valid visibility window (end must be after start)."
