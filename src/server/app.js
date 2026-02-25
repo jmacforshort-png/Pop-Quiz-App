@@ -17,6 +17,15 @@ function createAuthApp({ prisma, jwtSecret }) {
     res.status(200).json({ status: "ok" });
   });
 
+  app.get("/auth/blocks", async (_req, res) => {
+    const classes = await prisma.class.findMany({
+      select: { id: true, name: true, blockNumber: true },
+      orderBy: [{ blockNumber: "asc" }, { name: "asc" }],
+    });
+
+    return res.status(200).json({ classes });
+  });
+
   app.post("/auth/signup", async (req, res) => {
     try {
       const result = await authService.signup(req.body);
