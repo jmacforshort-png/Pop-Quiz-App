@@ -20,6 +20,14 @@ Auth routes:
 - `POST /auth/signup` with `{ "username": "student_1", "password": "secret1", "classId": "..." }`
 - `POST /auth/login` with `{ "username": "student_1", "password": "secret1" }`
 - `POST /auth/logout`
+- `GET /auth/me` (requires session cookie)
+
+Admin class routes (admin role + session required):
+
+- `GET /admin/classes`
+- `POST /admin/classes` with `{ "name": "Biology", "blockNumber": 2 }`
+- `PUT /admin/classes/:classId`
+- `DELETE /admin/classes/:classId`
 
 ## Database Setup
 
