@@ -30,6 +30,7 @@ Admin class routes (admin role + session required):
 - `POST /admin/classes` with `{ "name": "Biology", "blockNumber": 2 }`
 - `PUT /admin/classes/:classId`
 - `DELETE /admin/classes/:classId`
+- `GET /admin/students` (optional query: `classId` or `blockNumber`)
 
 ## Admin Class UI
 
