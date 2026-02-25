@@ -71,6 +71,12 @@ Admin class routes (admin role + session required):
 - Tests: `npm test`
 - Formatting check: `npm run format:check`
 - All checks: `npm run check`
+- Release preflight: `npm run release:preflight`
+
+## Release Ops
+
+- Release runbook: `docs/release-runbook.md`
+- Backup before deploy: `pg_dump "$DATABASE_URL" > ./backups/<timestamp>.sql`
 
 ## Features
 
