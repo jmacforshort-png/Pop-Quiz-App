@@ -1,6 +1,7 @@
 const jwt = require("jsonwebtoken");
 
 const SESSION_COOKIE = "pop_quiz_session";
+const SESSION_TTL = "7d";
 
 function issueSessionToken(user, jwtSecret) {
   return jwt.sign(
@@ -10,8 +11,12 @@ function issueSessionToken(user, jwtSecret) {
       role: user.role,
     },
     jwtSecret,
-    { expiresIn: "7d" }
+    { expiresIn: SESSION_TTL }
   );
+}
+
+function verifySessionToken(token, jwtSecret) {
+  return jwt.verify(token, jwtSecret);
 }
 
 function attachSessionCookie(res, token) {
@@ -33,7 +38,9 @@ function clearSessionCookie(res) {
 
 module.exports = {
   SESSION_COOKIE,
+  SESSION_TTL,
   issueSessionToken,
+  verifySessionToken,
   attachSessionCookie,
   clearSessionCookie,
 };
