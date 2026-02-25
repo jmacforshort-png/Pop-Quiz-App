@@ -1,0 +1,66 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pop Quiz Admin</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="admin.css" />
+  </head>
+  <body>
+    <main class="app admin-app">
+      <header class="hero">
+        <p class="kicker">Teacher Panel</p>
+        <h1>Class Manager</h1>
+        <p class="subtitle">Create, update, and organize classes by block.</p>
+      </header>
+
+      <section class="card admin-layout">
+        <section class="admin-section">
+          <h2 id="class-form-title">Create Class</h2>
+          <form id="class-form" class="class-form">
+            <label>
+              Class Name
+              <input id="class-name" name="name" type="text" placeholder="Biology" required />
+            </label>
+            <label>
+              Block Number
+              <input id="class-block" name="blockNumber" type="number" min="1" max="99" required />
+            </label>
+            <div class="row-actions">
+              <button type="submit" class="btn primary">Save Class</button>
+              <button id="cancel-edit" type="button" class="btn secondary" hidden>Cancel</button>
+            </div>
+          </form>
+          <p id="form-message" class="form-message" aria-live="polite"></p>
+        </section>
+
+        <section class="admin-section">
+          <div class="section-head">
+            <h2>Current Classes</h2>
+            <button id="refresh-classes" class="btn secondary" type="button">Refresh</button>
+          </div>
+          <div id="classes-empty" class="empty-state">No classes yet. Add your first class.</div>
+          <table id="classes-table" class="classes-table" hidden>
+            <thead>
+              <tr>
+                <th>Class Name</th>
+                <th>Block</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="classes-table-body"></tbody>
+          </table>
+        </section>
+      </section>
+    </main>
+
+    <script src="admin-classes.js"></script>
+  </body>
+</html>

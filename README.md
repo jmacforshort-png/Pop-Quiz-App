@@ -7,6 +7,7 @@ A lightweight browser quiz app built with plain HTML, CSS, and JavaScript.
 1. Install dependencies: `npm install`
 2. Start local server: `npm run dev`
 3. Open `http://localhost:4173`
+4. Open `http://localhost:4173/admin.html` for class management UI
 
 ## Auth API (PQ-005)
 
@@ -28,6 +29,12 @@ Admin class routes (admin role + session required):
 - `POST /admin/classes` with `{ "name": "Biology", "blockNumber": 2 }`
 - `PUT /admin/classes/:classId`
 - `DELETE /admin/classes/:classId`
+
+## Admin Class UI
+
+- `admin.html` provides class create/edit/delete flow
+- `admin-classes.js` calls the API at `http://localhost:3000` by default
+- To override API base URL, set `localStorage.popQuizApiBase` in browser devtools
 
 ## Database Setup
 

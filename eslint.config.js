@@ -17,6 +17,9 @@ module.exports = [
         require: "readonly",
         process: "readonly",
         console: "readonly",
+        fetch: "readonly",
+        localStorage: "readonly",
+        confirm: "readonly",
       },
     },
     rules: {
