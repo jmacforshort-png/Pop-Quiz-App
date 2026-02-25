@@ -4,7 +4,16 @@ A lightweight browser quiz app built with plain HTML, CSS, and JavaScript.
 
 ## Run
 
-Open `index.html` in any browser.
+1. Install dependencies: `npm install`
+2. Start local server: `npm run dev`
+3. Open `http://localhost:4173`
+
+## Quality Checks
+
+- Lint: `npm run lint`
+- Tests: `npm test`
+- Formatting check: `npm run format:check`
+- All checks: `npm run check`
 
 ## Features
 
