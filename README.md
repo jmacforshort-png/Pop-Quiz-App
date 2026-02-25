@@ -55,6 +55,7 @@ Admin class routes (admin role + session required):
 - quiz builder includes a lifecycle list to publish quizzes and publish results
 - admin reporting section supports block filter with assigned/submitted/average metrics
 - quiz builder requires per-block visibility start/end date-time
+- assignment schedules are stored as UTC with explicit offsets; student views render times in local timezone
 
 ## Database Setup
 
