@@ -5,6 +5,7 @@ const { createAuthService, AuthServiceError } = require("./authService");
 const { requireAuth, requireRole } = require("./authMiddleware");
 const { createClassService, ClassServiceError } = require("./classService");
 const { createStudentService, StudentServiceError } = require("./studentService");
+const { createQuizService, QuizServiceError } = require("./quizService");
 const { attachSessionCookie, clearSessionCookie } = require("./session");
 
 function createAuthApp({ prisma, jwtSecret }) {
@@ -12,6 +13,7 @@ function createAuthApp({ prisma, jwtSecret }) {
   const auditService = createAuditService({ prisma });
   const classService = createClassService({ prisma });
   const studentService = createStudentService({ prisma });
+  const quizService = createQuizService({ prisma });
   const app = express();
 
   app.use(express.json());
@@ -213,6 +215,26 @@ function createAuthApp({ prisma, jwtSecret }) {
     const limit = Number.isInteger(requestedLimit) ? requestedLimit : 50;
     const logs = await auditService.listLogsForAdmin(req.auth.sub, limit);
     return res.status(200).json({ logs });
+  });
+
+  app.post("/admin/quizzes", requireAuth(jwtSecret), requireRole("admin"), async (req, res) => {
+    try {
+      const quiz = await quizService.createDraftQuiz(req.auth.sub, req.body);
+      await auditService.logAction({
+        actorUserId: req.auth.sub,
+        action: AUDIT_ACTIONS.QUIZ_DRAFT_CREATED,
+        targetType: "quiz",
+        targetId: quiz.id,
+        quizId: quiz.id,
+      });
+      return res.status(201).json({ quiz });
+    } catch (error) {
+      if (error instanceof QuizServiceError) {
+        return res.status(error.statusCode).json({ error: error.message });
+      }
+
+      return res.status(500).json({ error: "Unable to create quiz." });
+    }
   });
 
   return app;
