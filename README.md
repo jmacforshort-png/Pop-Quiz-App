@@ -8,6 +8,14 @@ A lightweight browser quiz app built with plain HTML, CSS, and JavaScript.
 2. Start local server: `npm run dev`
 3. Open `http://localhost:4173`
 
+## Database Setup
+
+1. Copy environment template: `cp .env.example .env`
+2. Update `DATABASE_URL` in `.env`
+3. Generate Prisma client: `npm run db:generate`
+4. Run local migrations: `npm run db:migrate`
+5. For deployment migrations: `npm run db:migrate:deploy`
+
 ## Quality Checks
 
 - Lint: `npm run lint`
