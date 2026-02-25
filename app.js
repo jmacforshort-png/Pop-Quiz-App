@@ -51,9 +51,7 @@ const timerText = document.getElementById("timer");
 const scoreText = document.getElementById("score-text");
 
 function showPanel(panel) {
-  [startScreen, questionScreen, resultScreen].forEach((item) =>
-    item.classList.remove("active")
-  );
+  [startScreen, questionScreen, resultScreen].forEach((item) => item.classList.remove("active"));
   panel.classList.add("active");
 }
 
