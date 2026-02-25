@@ -1,5 +1,5 @@
-const bcrypt = require("bcryptjs");
 const { loginSchema, signupSchema } = require("./authSchemas");
+const { hashPassword, verifyPassword } = require("./password");
 const { issueSessionToken } = require("./session");
 const { normalizeUsername } = require("./username");
 
@@ -39,7 +39,7 @@ function createAuthService({ prisma, jwtSecret }) {
     const usernameNormalized = normalizeUsername(username);
 
     try {
-      const passwordHash = await bcrypt.hash(password, 10);
+      const passwordHash = await hashPassword(password);
       const user = await prisma.user.create({
         data: {
           username,
@@ -79,7 +79,7 @@ function createAuthService({ prisma, jwtSecret }) {
       throw new AuthServiceError(401, "Invalid username or password.");
     }
 
-    const isValidPassword = await bcrypt.compare(password, user.passwordHash);
+    const isValidPassword = await verifyPassword(password, user.passwordHash);
 
     if (!isValidPassword) {
       throw new AuthServiceError(401, "Invalid username or password.");

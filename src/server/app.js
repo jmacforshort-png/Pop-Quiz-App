@@ -1,6 +1,7 @@
 const cookieParser = require("cookie-parser");
 const express = require("express");
 const { createAuthService, AuthServiceError } = require("./authService");
+const { requireAuth } = require("./authMiddleware");
 const { attachSessionCookie, clearSessionCookie } = require("./session");
 
 function createAuthApp({ prisma, jwtSecret }) {
@@ -47,6 +48,16 @@ function createAuthApp({ prisma, jwtSecret }) {
   app.post("/auth/logout", (_req, res) => {
     clearSessionCookie(res);
     return res.status(200).json({ success: true });
+  });
+
+  app.get("/auth/me", requireAuth(jwtSecret), (req, res) => {
+    return res.status(200).json({
+      user: {
+        id: req.auth.sub,
+        username: req.auth.username,
+        role: req.auth.role,
+      },
+    });
   });
 
   return app;
