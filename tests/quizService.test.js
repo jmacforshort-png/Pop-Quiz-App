@@ -288,4 +288,74 @@ describe("quiz service", () => {
       statusCode: 400,
     });
   });
+
+  it("returns quiz summary report with assigned/submitted/average", async () => {
+    const prisma = {
+      quiz: {
+        findMany: async () => [
+          {
+            id: "quiz_1",
+            title: "Unit 1 Quiz",
+            status: "published",
+            resultStatus: "hidden",
+            assignments: [
+              {
+                class: {
+                  id: "class_1",
+                  name: "Biology",
+                  blockNumber: 1,
+                  students: [{ id: "student_1" }, { id: "student_2" }],
+                },
+              },
+            ],
+            attempts: [
+              { score: 4, student: { id: "student_1", classId: "class_1" } },
+              { score: 2, student: { id: "student_2", classId: "class_1" } },
+            ],
+          },
+        ],
+      },
+    };
+
+    const quizService = createQuizService({ prisma });
+    const report = await quizService.getQuizSummaryReport("admin_1");
+
+    expect(report).toHaveLength(1);
+    expect(report[0].assignedCount).toBe(2);
+    expect(report[0].submittedCount).toBe(2);
+    expect(report[0].averageScore).toBe(3);
+  });
+
+  it("filters quiz summary report by block", async () => {
+    const prisma = {
+      quiz: {
+        findMany: async () => [
+          {
+            id: "quiz_2",
+            title: "Unit 2 Quiz",
+            status: "published",
+            resultStatus: "published",
+            assignments: [
+              {
+                class: {
+                  id: "class_2",
+                  name: "Chemistry",
+                  blockNumber: 2,
+                  students: [{ id: "student_3" }],
+                },
+              },
+            ],
+            attempts: [{ score: 5, student: { id: "student_3", classId: "class_2" } }],
+          },
+        ],
+      },
+    };
+
+    const quizService = createQuizService({ prisma });
+    const report = await quizService.getQuizSummaryReport("admin_1", { blockNumber: 2 });
+
+    expect(report).toHaveLength(1);
+    expect(report[0].blockNumbers).toEqual([2]);
+    expect(report[0].assignedCount).toBe(1);
+  });
 });

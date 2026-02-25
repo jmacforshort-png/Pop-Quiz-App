@@ -35,6 +35,7 @@ Admin class routes (admin role + session required):
 - `GET /admin/audit-logs` (optional query: `limit`)
 - `POST /admin/quizzes` for fixed-format draft quiz creation
 - `GET /admin/quizzes` list admin quizzes
+- `GET /admin/reports/quiz-summary` report assigned/submitted/average score metrics (optional `blockNumber`)
 - `GET /admin/quizzes/:quizId` load a quiz for editing
 - `PUT /admin/quizzes/:quizId` update a draft quiz
 - `POST /admin/quizzes/:quizId/publish` publish a draft quiz
@@ -52,6 +53,7 @@ Admin class routes (admin role + session required):
 - To override API base URL, set `localStorage.popQuizApiBase` in browser devtools
 - `admin-quizzes.html` provides fixed 5-question quiz draft builder
 - quiz builder includes a lifecycle list to publish quizzes and publish results
+- admin reporting section supports block filter with assigned/submitted/average metrics
 - quiz builder requires per-block visibility start/end date-time
 
 ## Database Setup
