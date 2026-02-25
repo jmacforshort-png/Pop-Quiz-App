@@ -35,6 +35,27 @@
         </section>
 
         <section class="admin-section">
+          <div class="section-head">
+            <h2>Quiz Lifecycle</h2>
+          </div>
+          <div id="quiz-list-empty" class="empty-state">
+            No quizzes yet. Create your first draft.
+          </div>
+          <table id="quiz-list-table" class="classes-table" hidden>
+            <thead>
+              <tr>
+                <th>Quiz</th>
+                <th>Status</th>
+                <th>Results</th>
+                <th>Blocks</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="quiz-list-body"></tbody>
+          </table>
+        </section>
+
+        <section class="admin-section">
           <h2>Create New Quiz</h2>
           <form id="quiz-form" class="quiz-form">
             <label>
