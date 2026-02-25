@@ -157,6 +157,31 @@ function createAuthApp({ prisma, jwtSecret }) {
     }
   });
 
+  app.post(
+    "/admin/students/:studentId/reset-password",
+    requireAuth(jwtSecret),
+    requireRole("admin"),
+    async (req, res) => {
+      try {
+        const result = await studentService.resetStudentPassword(
+          req.auth.sub,
+          req.params.studentId,
+          req.body
+        );
+        return res.status(200).json({
+          temporaryPassword: result.temporaryPassword,
+          generated: result.wasGenerated,
+        });
+      } catch (error) {
+        if (error instanceof StudentServiceError) {
+          return res.status(error.statusCode).json({ error: error.message });
+        }
+
+        return res.status(500).json({ error: "Unable to reset password." });
+      }
+    }
+  );
+
   return app;
 }
 
