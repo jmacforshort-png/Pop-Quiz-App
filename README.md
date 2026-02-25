@@ -18,7 +18,8 @@ A lightweight browser quiz app built with plain HTML, CSS, and JavaScript.
 
 Auth routes:
 
-- `POST /auth/signup` with `{ "username": "student_1", "password": "secret1", "classId": "..." }`
+- `GET /auth/blocks` for block selection options
+- `POST /auth/signup` with `{ "username": "student_1", "password": "secret1", "blockNumber": 2 }`
 - `POST /auth/login` with `{ "username": "student_1", "password": "secret1" }`
 - `POST /auth/logout`
 - `GET /auth/me` (requires session cookie)

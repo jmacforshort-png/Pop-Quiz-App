@@ -35,8 +35,16 @@ function createAuthService({ prisma, jwtSecret }) {
       throw new AuthServiceError(400, parsed.error.issues[0]?.message ?? "Invalid signup payload.");
     }
 
-    const { username, password, classId } = parsed.data;
+    const { username, password, blockNumber } = parsed.data;
     const usernameNormalized = normalizeUsername(username);
+    const selectedClass = await prisma.class.findFirst({
+      where: { blockNumber },
+      orderBy: { createdAt: "asc" },
+    });
+
+    if (!selectedClass) {
+      throw new AuthServiceError(400, "Selected block number does not match an available class.");
+    }
 
     try {
       const passwordHash = await hashPassword(password);
@@ -46,7 +54,7 @@ function createAuthService({ prisma, jwtSecret }) {
           usernameNormalized,
           passwordHash,
           role: "student",
-          classId,
+          classId: selectedClass.id,
         },
       });
 

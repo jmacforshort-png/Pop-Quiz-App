@@ -3,6 +3,10 @@ const { AuthServiceError, createAuthService } = require("../src/server/authServi
 
 function createPrismaMock() {
   const users = [];
+  const classes = [
+    { id: "class_1", name: "Biology", blockNumber: 1 },
+    { id: "class_2", name: "Chemistry", blockNumber: 2 },
+  ];
 
   return {
     user: {
@@ -33,7 +37,13 @@ function createPrismaMock() {
         return null;
       },
     },
+    class: {
+      findFirst: async ({ where }) => {
+        return classes.find((item) => item.blockNumber === where.blockNumber) ?? null;
+      },
+    },
     users,
+    classes,
   };
 }
 
@@ -45,7 +55,7 @@ describe("auth service", () => {
     const result = await authService.signup({
       username: "student_one",
       password: "secret1",
-      classId: "class_1",
+      blockNumber: 1,
     });
 
     expect(result.user.username).toBe("student_one");
@@ -53,6 +63,7 @@ describe("auth service", () => {
 
     const savedUser = prisma.users[0];
     expect(savedUser.usernameNormalized).toBe("student_one");
+    expect(savedUser.classId).toBe("class_1");
     expect(savedUser.passwordHash).not.toBe("secret1");
     expect(await bcrypt.compare("secret1", savedUser.passwordHash)).toBe(true);
   });
@@ -65,6 +76,7 @@ describe("auth service", () => {
       authService.signup({
         username: "student_two",
         password: "123",
+        blockNumber: 1,
       })
     ).rejects.toMatchObject({
       statusCode: 400,
@@ -79,12 +91,14 @@ describe("auth service", () => {
     await authService.signup({
       username: "student_three",
       password: "secret1",
+      blockNumber: 1,
     });
 
     await expect(
       authService.signup({
         username: "Student_Three",
         password: "secret2",
+        blockNumber: 1,
       })
     ).rejects.toMatchObject({
       statusCode: 409,
@@ -99,6 +113,7 @@ describe("auth service", () => {
     await authService.signup({
       username: " Student_Four ",
       password: "secret1",
+      blockNumber: 1,
     });
 
     const result = await authService.login({
@@ -117,6 +132,7 @@ describe("auth service", () => {
     await authService.signup({
       username: "student_five",
       password: "secret1",
+      blockNumber: 1,
     });
 
     await expect(
@@ -125,5 +141,21 @@ describe("auth service", () => {
         password: "wrongpass",
       })
     ).rejects.toBeInstanceOf(AuthServiceError);
+  });
+
+  it("rejects signup when block does not exist", async () => {
+    const prisma = createPrismaMock();
+    const authService = createAuthService({ prisma, jwtSecret: "test-secret" });
+
+    await expect(
+      authService.signup({
+        username: "student_six",
+        password: "secret1",
+        blockNumber: 99,
+      })
+    ).rejects.toMatchObject({
+      statusCode: 400,
+      message: expect.stringContaining("block number"),
+    });
   });
 });
