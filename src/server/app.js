@@ -108,6 +108,27 @@ function createAuthApp({ prisma, jwtSecret }) {
     }
   });
 
+  app.get(
+    "/student/quizzes/:quizId",
+    requireAuth(jwtSecret),
+    requireRole("student"),
+    async (req, res) => {
+      try {
+        const quiz = await studentQuizService.getQuizForStudent({
+          classId: req.auth.classId,
+          quizId: req.params.quizId,
+        });
+        return res.status(200).json({ quiz });
+      } catch (error) {
+        if (error instanceof StudentQuizServiceError) {
+          return res.status(error.statusCode).json({ error: error.message });
+        }
+
+        return res.status(500).json({ error: "Unable to load quiz." });
+      }
+    }
+  );
+
   app.get("/admin/classes", requireAuth(jwtSecret), requireRole("admin"), async (req, res) => {
     const classes = await classService.listClasses(req.auth.sub);
     return res.status(200).json({ classes });
