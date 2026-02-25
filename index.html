@@ -1,0 +1,49 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pop Quiz</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <main class="app">
+      <header class="hero">
+        <p class="kicker">New Project</p>
+        <h1>Pop Quiz</h1>
+        <p class="subtitle">Fast rounds. No fluff. See how many you can get right.</p>
+      </header>
+
+      <section id="quiz-card" class="card">
+        <div id="start-screen" class="panel active">
+          <h2>Ready to play?</h2>
+          <p>You have 15 seconds per question. Wrong answers cost time.</p>
+          <button id="start-btn" class="btn primary">Start Quiz</button>
+        </div>
+
+        <div id="question-screen" class="panel" aria-live="polite">
+          <div class="status-row">
+            <span id="question-count">Question 1 / 5</span>
+            <span id="timer">15s</span>
+          </div>
+          <h2 id="question-text">Question text</h2>
+          <div id="answer-list" class="answers"></div>
+        </div>
+
+        <div id="result-screen" class="panel">
+          <h2>Round Complete</h2>
+          <p id="score-text">You scored 0 out of 5.</p>
+          <button id="restart-btn" class="btn secondary">Play Again</button>
+        </div>
+      </section>
+    </main>
+
+    <script src="app.js"></script>
+  </body>
+</html>
