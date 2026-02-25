@@ -32,6 +32,7 @@ Admin class routes (admin role + session required):
 - `DELETE /admin/classes/:classId`
 - `GET /admin/students` (optional query: `classId` or `blockNumber`)
 - `POST /admin/students/:studentId/reset-password` with optional `{ "newPassword": "secret123" }`
+- `GET /admin/audit-logs` (optional query: `limit`)
 
 ## Admin Class UI
 

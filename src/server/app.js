@@ -1,5 +1,6 @@
 const cookieParser = require("cookie-parser");
 const express = require("express");
+const { AUDIT_ACTIONS, createAuditService } = require("./auditService");
 const { createAuthService, AuthServiceError } = require("./authService");
 const { requireAuth, requireRole } = require("./authMiddleware");
 const { createClassService, ClassServiceError } = require("./classService");
@@ -8,6 +9,7 @@ const { attachSessionCookie, clearSessionCookie } = require("./session");
 
 function createAuthApp({ prisma, jwtSecret }) {
   const authService = createAuthService({ prisma, jwtSecret });
+  const auditService = createAuditService({ prisma });
   const classService = createClassService({ prisma });
   const studentService = createStudentService({ prisma });
   const app = express();
@@ -94,6 +96,12 @@ function createAuthApp({ prisma, jwtSecret }) {
   app.post("/admin/classes", requireAuth(jwtSecret), requireRole("admin"), async (req, res) => {
     try {
       const createdClass = await classService.createClass(req.auth.sub, req.body);
+      await auditService.logAction({
+        actorUserId: req.auth.sub,
+        action: AUDIT_ACTIONS.CLASS_CREATED,
+        targetType: "class",
+        targetId: createdClass.id,
+      });
       return res.status(201).json({ class: createdClass });
     } catch (error) {
       if (error instanceof ClassServiceError) {
@@ -115,6 +123,12 @@ function createAuthApp({ prisma, jwtSecret }) {
           req.params.classId,
           req.body
         );
+        await auditService.logAction({
+          actorUserId: req.auth.sub,
+          action: AUDIT_ACTIONS.CLASS_UPDATED,
+          targetType: "class",
+          targetId: updatedClass.id,
+        });
         return res.status(200).json({ class: updatedClass });
       } catch (error) {
         if (error instanceof ClassServiceError) {
@@ -133,6 +147,12 @@ function createAuthApp({ prisma, jwtSecret }) {
     async (req, res) => {
       try {
         await classService.deleteClass(req.auth.sub, req.params.classId);
+        await auditService.logAction({
+          actorUserId: req.auth.sub,
+          action: AUDIT_ACTIONS.CLASS_DELETED,
+          targetType: "class",
+          targetId: req.params.classId,
+        });
         return res.status(204).send();
       } catch (error) {
         if (error instanceof ClassServiceError) {
@@ -168,6 +188,12 @@ function createAuthApp({ prisma, jwtSecret }) {
           req.params.studentId,
           req.body
         );
+        await auditService.logAction({
+          actorUserId: req.auth.sub,
+          action: AUDIT_ACTIONS.STUDENT_PASSWORD_RESET,
+          targetType: "user",
+          targetId: req.params.studentId,
+        });
         return res.status(200).json({
           temporaryPassword: result.temporaryPassword,
           generated: result.wasGenerated,
@@ -181,6 +207,13 @@ function createAuthApp({ prisma, jwtSecret }) {
       }
     }
   );
+
+  app.get("/admin/audit-logs", requireAuth(jwtSecret), requireRole("admin"), async (req, res) => {
+    const requestedLimit = Number(req.query.limit);
+    const limit = Number.isInteger(requestedLimit) ? requestedLimit : 50;
+    const logs = await auditService.listLogsForAdmin(req.auth.sub, limit);
+    return res.status(200).json({ logs });
+  });
 
   return app;
 }

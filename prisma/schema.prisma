@@ -155,4 +155,7 @@ model AuditLog {
 
   actor User  @relation(fields: [actorUserId], references: [id], onDelete: Cascade)
   quiz  Quiz? @relation(fields: [quizId], references: [id], onDelete: SetNull)
+
+  @@index([actorUserId, createdAt])
+  @@index([targetType, targetId])
 }
