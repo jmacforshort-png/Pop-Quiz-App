@@ -1,4 +1,6 @@
-const { studentFilterSchema } = require("./studentSchemas");
+const crypto = require("node:crypto");
+const { hashPassword } = require("./password");
+const { resetPasswordSchema, studentFilterSchema } = require("./studentSchemas");
 
 class StudentServiceError extends Error {
   constructor(statusCode, message) {
@@ -53,8 +55,47 @@ function createStudentService({ prisma }) {
     });
   }
 
+  async function resetStudentPassword(adminId, studentId, payload = {}) {
+    const parsed = resetPasswordSchema.safeParse(payload);
+    if (!parsed.success) {
+      throw new StudentServiceError(
+        400,
+        parsed.error.issues[0]?.message ?? "Invalid password payload."
+      );
+    }
+
+    const student = await prisma.user.findFirst({
+      where: {
+        id: studentId,
+        role: "student",
+        class: { adminId },
+      },
+    });
+
+    if (!student) {
+      throw new StudentServiceError(404, "Student not found.");
+    }
+
+    const temporaryPassword = parsed.data.newPassword ?? crypto.randomBytes(4).toString("hex");
+    const passwordHash = await hashPassword(temporaryPassword);
+
+    await prisma.user.update({
+      where: { id: studentId },
+      data: {
+        passwordHash,
+        mustChangePassword: true,
+      },
+    });
+
+    return {
+      temporaryPassword,
+      wasGenerated: !parsed.data.newPassword,
+    };
+  }
+
   return {
     listStudents,
+    resetStudentPassword,
   };
 }
 

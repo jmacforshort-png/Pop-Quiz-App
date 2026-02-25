@@ -5,6 +5,11 @@ const studentFilterSchema = z.object({
   blockNumber: z.coerce.number().int().min(1).max(99).optional(),
 });
 
+const resetPasswordSchema = z.object({
+  newPassword: z.string().min(6, "Password must be at least 6 characters long.").optional(),
+});
+
 module.exports = {
   studentFilterSchema,
+  resetPasswordSchema,
 };
