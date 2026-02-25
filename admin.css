@@ -80,3 +80,44 @@
 .empty-state {
   color: var(--muted);
 }
+
+.quiz-form {
+  display: grid;
+  gap: 12px;
+}
+
+.quiz-form textarea {
+  border: 1px solid #ccd5c5;
+  border-radius: 10px;
+  padding: 10px;
+  font: inherit;
+}
+
+.question-cards {
+  display: grid;
+  gap: 14px;
+}
+
+.question-card {
+  border: 1px solid #e5ebde;
+  border-radius: 12px;
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+}
+
+.question-card h3 {
+  margin: 0;
+}
+
+.choice-grid {
+  display: grid;
+  gap: 8px;
+}
+
+.question-card select {
+  border: 1px solid #ccd5c5;
+  border-radius: 10px;
+  padding: 8px;
+  font: inherit;
+}

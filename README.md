@@ -40,6 +40,7 @@ Admin class routes (admin role + session required):
 - `admin.html` provides class create/edit/delete flow
 - `admin-classes.js` calls the API at `http://localhost:3000` by default
 - To override API base URL, set `localStorage.popQuizApiBase` in browser devtools
+- `admin-quizzes.html` provides fixed 5-question quiz draft builder
 
 ## Database Setup
 
