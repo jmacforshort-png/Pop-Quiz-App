@@ -128,7 +128,12 @@ submitButton.addEventListener("click", async () => {
   }
 
   const data = await response.json();
-  setMessage(`Quiz submitted. Score saved: ${data.attempt.score}/${data.attempt.maxScore}.`);
+  if (data.attempt.resultStatus === "published" && data.attempt.score !== null) {
+    setMessage(`Quiz submitted. Score saved: ${data.attempt.score}/${data.attempt.maxScore}.`);
+    return;
+  }
+
+  setMessage("Quiz submitted. Results are hidden until your teacher publishes them.");
 });
 
 loadQuiz();

@@ -13,6 +13,7 @@ function createSubmissionPrismaMock() {
 
         return {
           id: "quiz_1",
+          resultStatus: "hidden",
           questions: [
             {
               id: "q1",
@@ -64,8 +65,9 @@ describe("student quiz submission", () => {
     });
 
     expect(attempt.id).toBe("attempt_1");
-    expect(attempt.score).toBe(1);
+    expect(attempt.score).toBeNull();
     expect(attempt.maxScore).toBe(2);
+    expect(attempt.resultStatus).toBe("hidden");
   });
 
   it("rejects incomplete answer sets", async () => {
@@ -97,5 +99,35 @@ describe("student quiz submission", () => {
         ],
       })
     ).rejects.toBeInstanceOf(StudentQuizServiceError);
+  });
+
+  it("returns score when results are already published", async () => {
+    const prisma = createSubmissionPrismaMock();
+    prisma.quiz.findFirst = async () => ({
+      id: "quiz_1",
+      resultStatus: "published",
+      questions: [
+        {
+          id: "q1",
+          choices: [
+            { label: "A", isCorrect: true },
+            { label: "B", isCorrect: false },
+            { label: "C", isCorrect: false },
+            { label: "D", isCorrect: false },
+          ],
+        },
+      ],
+    });
+
+    const service = createStudentQuizService({ prisma });
+    const attempt = await service.submitQuizAttempt({
+      classId: "class_1",
+      quizId: "quiz_1",
+      studentId: "student_1",
+      answers: [{ questionId: "q1", selectedLabel: "A" }],
+    });
+
+    expect(attempt.score).toBe(1);
+    expect(attempt.resultStatus).toBe("published");
   });
 });

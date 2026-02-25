@@ -123,6 +123,7 @@ function createStudentQuizService({ prisma }) {
       },
       select: {
         id: true,
+        resultStatus: true,
         questions: {
           orderBy: { orderIndex: "asc" },
           select: {
@@ -179,7 +180,7 @@ function createStudentQuizService({ prisma }) {
 
     const score = gradedAnswers.filter((answer) => answer.isCorrect).length;
 
-    return prisma.attempt.create({
+    const attempt = await prisma.attempt.create({
       data: {
         quizId,
         studentId,
@@ -198,6 +199,14 @@ function createStudentQuizService({ prisma }) {
         submittedAt: true,
       },
     });
+
+    return {
+      id: attempt.id,
+      submittedAt: attempt.submittedAt,
+      resultStatus: quiz.resultStatus,
+      score: quiz.resultStatus === "published" ? attempt.score : null,
+      maxScore: attempt.maxScore,
+    };
   }
 
   return {
