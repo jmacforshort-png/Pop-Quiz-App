@@ -1,6 +1,7 @@
 const bcrypt = require("bcryptjs");
 const { loginSchema, signupSchema } = require("./authSchemas");
 const { issueSessionToken } = require("./session");
+const { normalizeUsername } = require("./username");
 
 class AuthServiceError extends Error {
   constructor(statusCode, message) {
@@ -35,12 +36,14 @@ function createAuthService({ prisma, jwtSecret }) {
     }
 
     const { username, password, classId } = parsed.data;
+    const usernameNormalized = normalizeUsername(username);
 
     try {
       const passwordHash = await bcrypt.hash(password, 10);
       const user = await prisma.user.create({
         data: {
           username,
+          usernameNormalized,
           passwordHash,
           role: "student",
           classId,
@@ -68,7 +71,9 @@ function createAuthService({ prisma, jwtSecret }) {
     }
 
     const { username, password } = parsed.data;
-    const user = await prisma.user.findUnique({ where: { username } });
+    const user = await prisma.user.findUnique({
+      where: { usernameNormalized: normalizeUsername(username) },
+    });
 
     if (!user) {
       throw new AuthServiceError(401, "Invalid username or password.");
