@@ -12,6 +12,7 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "check": "run-s lint test format:check",
+    "release:preflight": "bash scripts/release-preflight.sh",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
     "db:migrate:deploy": "prisma migrate deploy",
