@@ -210,10 +210,42 @@ function createQuizService({ prisma }) {
     });
   }
 
+  async function publishResults(adminId, quizId) {
+    const quiz = await prisma.quiz.findFirst({
+      where: { id: quizId, adminId },
+      select: {
+        id: true,
+        status: true,
+        resultStatus: true,
+      },
+    });
+    if (!quiz) {
+      throw new QuizServiceError(404, "Quiz not found.");
+    }
+
+    if (quiz.status !== "published") {
+      throw new QuizServiceError(400, "Results can only be published for published quizzes.");
+    }
+
+    if (quiz.resultStatus === "published") {
+      throw new QuizServiceError(400, "Results are already published.");
+    }
+
+    return prisma.quiz.update({
+      where: { id: quizId },
+      data: {
+        resultStatus: "published",
+        resultsPublishedAt: new Date(),
+      },
+      include: QUIZ_INCLUDE,
+    });
+  }
+
   return {
     createDraftQuiz,
     getQuizById,
     listQuizzes,
+    publishResults,
     publishQuiz,
     updateDraftQuiz,
   };

@@ -54,8 +54,10 @@ function createQuizPrismaMock() {
           title: data.title,
           description: data.description,
           status: data.status,
+          resultStatus: "hidden",
           createdAt: new Date(),
           publishedAt: null,
+          resultsPublishedAt: null,
           assignments: data.assignments.create.map((assignment) => ({
             classId: assignment.classId,
             visibleFromUtc: assignment.visibleFromUtc,
@@ -115,6 +117,12 @@ function createQuizPrismaMock() {
         }
         if (data.publishedAt) {
           quiz.publishedAt = data.publishedAt;
+        }
+        if (data.resultStatus) {
+          quiz.resultStatus = data.resultStatus;
+        }
+        if (data.resultsPublishedAt) {
+          quiz.resultsPublishedAt = data.resultsPublishedAt;
         }
         return quiz;
       },
@@ -182,6 +190,40 @@ describe("quiz service", () => {
     await quizService.publishQuiz("admin_1", created.id);
 
     await expect(quizService.publishQuiz("admin_1", created.id)).rejects.toMatchObject({
+      statusCode: 400,
+    });
+  });
+
+  it("publishes results for published quizzes", async () => {
+    const prisma = createQuizPrismaMock();
+    const quizService = createQuizService({ prisma });
+    const created = await quizService.createDraftQuiz("admin_1", validQuizPayload());
+    await quizService.publishQuiz("admin_1", created.id);
+
+    const resultPublished = await quizService.publishResults("admin_1", created.id);
+
+    expect(resultPublished.resultStatus).toBe("published");
+    expect(resultPublished.resultsPublishedAt).toBeInstanceOf(Date);
+  });
+
+  it("rejects publishing results for draft quizzes", async () => {
+    const prisma = createQuizPrismaMock();
+    const quizService = createQuizService({ prisma });
+    const created = await quizService.createDraftQuiz("admin_1", validQuizPayload());
+
+    await expect(quizService.publishResults("admin_1", created.id)).rejects.toMatchObject({
+      statusCode: 400,
+    });
+  });
+
+  it("rejects publishing results twice", async () => {
+    const prisma = createQuizPrismaMock();
+    const quizService = createQuizService({ prisma });
+    const created = await quizService.createDraftQuiz("admin_1", validQuizPayload());
+    await quizService.publishQuiz("admin_1", created.id);
+    await quizService.publishResults("admin_1", created.id);
+
+    await expect(quizService.publishResults("admin_1", created.id)).rejects.toMatchObject({
       statusCode: 400,
     });
   });
