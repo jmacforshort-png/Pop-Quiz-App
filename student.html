@@ -1,0 +1,39 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pop Quiz Student</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="student.css" />
+  </head>
+  <body>
+    <main class="app student-app">
+      <header class="hero">
+        <p class="kicker">Student Panel</p>
+        <h1>Available Quizzes</h1>
+        <p class="subtitle">Take quizzes assigned to your class during their active windows.</p>
+      </header>
+
+      <section class="card student-layout">
+        <div class="section-head">
+          <h2>Ready To Take</h2>
+          <button id="refresh-student" type="button" class="btn secondary">Refresh</button>
+        </div>
+
+        <p id="student-message" class="form-message" aria-live="polite"></p>
+
+        <div id="student-empty" class="empty-state">No quizzes available right now.</div>
+        <div id="student-list" class="student-list" hidden></div>
+      </section>
+    </main>
+
+    <script src="student-dashboard.js"></script>
+  </body>
+</html>
