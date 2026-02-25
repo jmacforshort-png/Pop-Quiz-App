@@ -6,13 +6,28 @@ const quizDescriptionInput = document.getElementById("quiz-description");
 const assignmentList = document.getElementById("assignment-list");
 const questionCards = document.getElementById("question-cards");
 const quizMessage = document.getElementById("quiz-message");
+const draftSelect = document.getElementById("draft-select");
+const refreshQuizzesButton = document.getElementById("refresh-quizzes");
+const newQuizButton = document.getElementById("new-quiz");
 
 const CHOICE_LABELS = ["A", "B", "C", "D"];
 const QUESTION_COUNT = 5;
 
+let editingQuizId = null;
+
 function setMessage(text, isError = false) {
   quizMessage.textContent = text;
   quizMessage.style.color = isError ? "var(--bad)" : "var(--muted)";
+}
+
+function toLocalDatetimeValue(isoValue) {
+  const date = new Date(isoValue);
+  if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  const offsetDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return offsetDate.toISOString().slice(0, 16);
 }
 
 function renderQuestionCards() {
@@ -125,6 +140,101 @@ async function loadAssignments() {
   renderAssignments(data.classes || []);
 }
 
+async function loadDrafts() {
+  const response = await fetch(`${API_BASE}/admin/quizzes`, { credentials: "include" });
+  if (!response.ok) {
+    setMessage("Unable to load drafts.", true);
+    return;
+  }
+
+  const data = await response.json();
+  const drafts = (data.quizzes || []).filter((quiz) => quiz.status === "draft");
+
+  draftSelect.innerHTML = '<option value="">Select a draft to edit</option>';
+  drafts.forEach((draft) => {
+    const option = document.createElement("option");
+    option.value = draft.id;
+    option.textContent = draft.title;
+    draftSelect.appendChild(option);
+  });
+}
+
+function resetQuizForm() {
+  editingQuizId = null;
+  quizForm.reset();
+  renderQuestionCards();
+  draftSelect.value = "";
+  setMessage("Ready to create a new draft.");
+}
+
+async function loadQuizIntoForm(quizId) {
+  const response = await fetch(`${API_BASE}/admin/quizzes/${quizId}`, { credentials: "include" });
+  if (!response.ok) {
+    setMessage("Unable to load selected draft.", true);
+    return;
+  }
+
+  const data = await response.json();
+  const quiz = data.quiz;
+
+  editingQuizId = quiz.id;
+  quizTitleInput.value = quiz.title;
+  quizDescriptionInput.value = quiz.description || "";
+
+  const cards = Array.from(document.querySelectorAll(".question-card"));
+  quiz.questions.forEach((question, index) => {
+    const card = cards[index];
+    if (!card) {
+      return;
+    }
+
+    card.querySelector('[data-role="prompt"]').value = question.prompt;
+    question.choices.forEach((choice) => {
+      const choiceInput = card.querySelector(
+        `[data-role="choice"][data-choice-label="${choice.label}"]`
+      );
+      choiceInput.value = choice.text;
+    });
+
+    const answerKey = question.choices.find((choice) => choice.isCorrect)?.label || "A";
+    card.querySelector('[data-role="answerKey"]').value = answerKey;
+  });
+
+  document.querySelectorAll('[data-role="assignment"]').forEach((checkbox) => {
+    checkbox.checked = false;
+  });
+  document.querySelectorAll('[data-role="visibleFrom"]').forEach((input) => {
+    input.value = "";
+  });
+  document.querySelectorAll('[data-role="visibleUntil"]').forEach((input) => {
+    input.value = "";
+  });
+
+  quiz.assignments.forEach((assignment) => {
+    const checkbox = document.querySelector(
+      `[data-role="assignment"][value="${assignment.classId}"]`
+    );
+    const fromInput = document.querySelector(
+      `[data-role="visibleFrom"][data-class-id="${assignment.classId}"]`
+    );
+    const untilInput = document.querySelector(
+      `[data-role="visibleUntil"][data-class-id="${assignment.classId}"]`
+    );
+
+    if (checkbox) {
+      checkbox.checked = true;
+    }
+    if (fromInput) {
+      fromInput.value = toLocalDatetimeValue(assignment.visibleFromUtc);
+    }
+    if (untilInput) {
+      untilInput.value = toLocalDatetimeValue(assignment.visibleUntilUtc);
+    }
+  });
+
+  setMessage(`Editing draft: ${quiz.title}`);
+}
+
 function buildQuizPayload() {
   const cards = Array.from(document.querySelectorAll(".question-card"));
   const assignmentInputs = Array.from(
@@ -167,7 +277,7 @@ function buildQuizPayload() {
 
 quizForm.addEventListener("submit", async (event) => {
   event.preventDefault();
-  setMessage("Saving quiz draft...");
+  setMessage(editingQuizId ? "Updating quiz draft..." : "Saving quiz draft...");
 
   if (!document.querySelector('[data-role="assignment"]:checked')) {
     setMessage("Select at least one block before saving.", true);
@@ -196,8 +306,13 @@ quizForm.addEventListener("submit", async (event) => {
     return;
   }
 
-  const response = await fetch(`${API_BASE}/admin/quizzes`, {
-    method: "POST",
+  const endpoint = editingQuizId
+    ? `${API_BASE}/admin/quizzes/${editingQuizId}`
+    : `${API_BASE}/admin/quizzes`;
+  const method = editingQuizId ? "PUT" : "POST";
+
+  const response = await fetch(endpoint, {
+    method,
     headers: { "Content-Type": "application/json" },
     credentials: "include",
     body: JSON.stringify(buildQuizPayload()),
@@ -209,10 +324,30 @@ quizForm.addEventListener("submit", async (event) => {
     return;
   }
 
-  quizForm.reset();
-  renderQuestionCards();
-  setMessage("Quiz draft saved.");
+  const data = await response.json();
+  await loadDrafts();
+  draftSelect.value = data.quiz.id;
+  editingQuizId = data.quiz.id;
+  setMessage(editingQuizId ? "Quiz draft saved." : "Quiz draft created.");
+});
+
+draftSelect.addEventListener("change", async () => {
+  if (!draftSelect.value) {
+    resetQuizForm();
+    return;
+  }
+
+  await loadQuizIntoForm(draftSelect.value);
+});
+
+refreshQuizzesButton.addEventListener("click", async () => {
+  await loadDrafts();
+  setMessage("Draft list refreshed.");
+});
+
+newQuizButton.addEventListener("click", () => {
+  resetQuizForm();
 });
 
 renderQuestionCards();
-loadAssignments();
+loadAssignments().then(loadDrafts);

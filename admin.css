@@ -28,6 +28,14 @@
   font: inherit;
 }
 
+#draft-select {
+  width: 100%;
+  border: 1px solid #ccd5c5;
+  border-radius: 10px;
+  padding: 10px;
+  font: inherit;
+}
+
 .row-actions {
   display: flex;
   gap: 8px;
