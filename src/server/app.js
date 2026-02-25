@@ -3,11 +3,13 @@ const express = require("express");
 const { createAuthService, AuthServiceError } = require("./authService");
 const { requireAuth, requireRole } = require("./authMiddleware");
 const { createClassService, ClassServiceError } = require("./classService");
+const { createStudentService, StudentServiceError } = require("./studentService");
 const { attachSessionCookie, clearSessionCookie } = require("./session");
 
 function createAuthApp({ prisma, jwtSecret }) {
   const authService = createAuthService({ prisma, jwtSecret });
   const classService = createClassService({ prisma });
+  const studentService = createStudentService({ prisma });
   const app = express();
 
   app.use(express.json());
@@ -141,6 +143,19 @@ function createAuthApp({ prisma, jwtSecret }) {
       }
     }
   );
+
+  app.get("/admin/students", requireAuth(jwtSecret), requireRole("admin"), async (req, res) => {
+    try {
+      const students = await studentService.listStudents(req.auth.sub, req.query);
+      return res.status(200).json({ students });
+    } catch (error) {
+      if (error instanceof StudentServiceError) {
+        return res.status(error.statusCode).json({ error: error.message });
+      }
+
+      return res.status(500).json({ error: "Unable to load students." });
+    }
+  });
 
   return app;
 }
