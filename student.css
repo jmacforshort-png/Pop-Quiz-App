@@ -29,3 +29,9 @@
 .student-quiz-item .btn {
   width: fit-content;
 }
+
+.student-choice {
+  display: flex;
+  gap: 8px;
+  align-items: flex-start;
+}
