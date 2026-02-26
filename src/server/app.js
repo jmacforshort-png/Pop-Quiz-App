@@ -18,6 +18,19 @@ function createAuthApp({ prisma, jwtSecret }) {
   const quizService = createQuizService({ prisma });
   const app = express();
 
+  app.use((req, res, next) => {
+    res.header("Access-Control-Allow-Origin", "http://localhost:4173");
+    res.header("Access-Control-Allow-Credentials", "true");
+    res.header("Access-Control-Allow-Headers", "Content-Type");
+    res.header("Access-Control-Allow-Methods", "GET,POST,PUT,DELETE,OPTIONS");
+
+    if (req.method === "OPTIONS") {
+      return res.sendStatus(204);
+    }
+
+    return next();
+  });
+
   app.use(express.json());
   app.use(cookieParser());
 
@@ -97,6 +110,7 @@ function createAuthApp({ prisma, jwtSecret }) {
     try {
       const quizzes = await studentQuizService.listAvailableQuizzes({
         classId: req.auth.classId,
+        studentId: req.auth.sub,
       });
       return res.status(200).json({ quizzes });
     } catch (error) {
@@ -117,6 +131,7 @@ function createAuthApp({ prisma, jwtSecret }) {
         const quiz = await studentQuizService.getQuizForStudent({
           classId: req.auth.classId,
           quizId: req.params.quizId,
+          studentId: req.auth.sub,
         });
         return res.status(200).json({ quiz });
       } catch (error) {

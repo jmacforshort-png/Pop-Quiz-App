@@ -192,6 +192,10 @@ function createWorkflowPrisma() {
       },
     },
     attempt: {
+      findFirst: async ({ where }) =>
+        attempts.find(
+          (attempt) => attempt.quizId === where.quizId && attempt.studentId === where.studentId
+        ) ?? null,
       create: async ({ data }) => {
         const attempt = {
           id: `attempt_${attemptCounter++}`,
@@ -284,6 +288,7 @@ describe("workflow e2e", () => {
 
     const available = await studentQuizService.listAvailableQuizzes({
       classId: signup.user.classId,
+      studentId: signup.user.id,
       now: new Date("2026-02-25T18:00:00.000Z"),
     });
     expect(available).toHaveLength(1);
@@ -291,6 +296,7 @@ describe("workflow e2e", () => {
     const quiz = await studentQuizService.getQuizForStudent({
       classId: signup.user.classId,
       quizId: draft.id,
+      studentId: signup.user.id,
       now: new Date("2026-02-25T18:00:00.000Z"),
     });
     expect(quiz.questions).toHaveLength(5);

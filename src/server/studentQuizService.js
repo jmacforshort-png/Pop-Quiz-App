@@ -10,9 +10,9 @@ function createStudentQuizService({ prisma }) {
     throw new Error("createStudentQuizService requires prisma client.");
   }
 
-  async function listAvailableQuizzes({ classId, now = new Date() }) {
-    if (!classId) {
-      throw new StudentQuizServiceError(400, "Student class is required.");
+  async function listAvailableQuizzes({ classId, studentId, now = new Date() }) {
+    if (!classId || !studentId) {
+      throw new StudentQuizServiceError(400, "Student identity is required.");
     }
 
     return prisma.quiz.findMany({
@@ -23,6 +23,11 @@ function createStudentQuizService({ prisma }) {
             classId,
             visibleFromUtc: { lte: now },
             visibleUntilUtc: { gt: now },
+          },
+        },
+        attempts: {
+          none: {
+            studentId,
           },
         },
       },
@@ -53,9 +58,20 @@ function createStudentQuizService({ prisma }) {
     });
   }
 
-  async function getQuizForStudent({ classId, quizId, now = new Date() }) {
-    if (!classId) {
-      throw new StudentQuizServiceError(400, "Student class is required.");
+  async function getQuizForStudent({ classId, quizId, studentId, now = new Date() }) {
+    if (!classId || !studentId) {
+      throw new StudentQuizServiceError(400, "Student identity is required.");
+    }
+
+    const existingAttempt = await prisma.attempt.findFirst({
+      where: {
+        quizId,
+        studentId,
+      },
+      select: { id: true },
+    });
+    if (existingAttempt) {
+      throw new StudentQuizServiceError(409, "You have already submitted this quiz.");
     }
 
     const quiz = await prisma.quiz.findFirst({
@@ -107,6 +123,17 @@ function createStudentQuizService({ prisma }) {
 
     if (!Array.isArray(answers) || answers.length === 0) {
       throw new StudentQuizServiceError(400, "Answer payload is required.");
+    }
+
+    const existingAttempt = await prisma.attempt.findFirst({
+      where: {
+        quizId,
+        studentId,
+      },
+      select: { id: true },
+    });
+    if (existingAttempt) {
+      throw new StudentQuizServiceError(409, "You have already submitted this quiz.");
     }
 
     const quiz = await prisma.quiz.findFirst({
@@ -180,25 +207,33 @@ function createStudentQuizService({ prisma }) {
 
     const score = gradedAnswers.filter((answer) => answer.isCorrect).length;
 
-    const attempt = await prisma.attempt.create({
-      data: {
-        quizId,
-        studentId,
-        submittedAt: now,
-        score,
-        maxScore: quiz.questions.length,
-        status: "submitted",
-        answers: {
-          create: gradedAnswers,
+    let attempt;
+    try {
+      attempt = await prisma.attempt.create({
+        data: {
+          quizId,
+          studentId,
+          submittedAt: now,
+          score,
+          maxScore: quiz.questions.length,
+          status: "submitted",
+          answers: {
+            create: gradedAnswers,
+          },
         },
-      },
-      select: {
-        id: true,
-        score: true,
-        maxScore: true,
-        submittedAt: true,
-      },
-    });
+        select: {
+          id: true,
+          score: true,
+          maxScore: true,
+          submittedAt: true,
+        },
+      });
+    } catch (error) {
+      if (error?.code === "P2002") {
+        throw new StudentQuizServiceError(409, "You have already submitted this quiz.");
+      }
+      throw error;
+    }
 
     return {
       id: attempt.id,

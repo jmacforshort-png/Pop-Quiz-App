@@ -129,6 +129,8 @@ model Attempt {
   quiz    Quiz            @relation(fields: [quizId], references: [id], onDelete: Cascade)
   student User            @relation(fields: [studentId], references: [id], onDelete: Cascade)
   answers AttemptAnswer[]
+
+  @@unique([quizId, studentId])
 }
 
 model AttemptAnswer {

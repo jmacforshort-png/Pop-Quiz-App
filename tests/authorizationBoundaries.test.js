@@ -61,6 +61,9 @@ describe("authorization boundaries", () => {
 
   it("blocks student quiz payload outside assigned class window", async () => {
     const prisma = {
+      attempt: {
+        findFirst: async () => null,
+      },
       quiz: {
         findFirst: async () => null,
       },
@@ -71,6 +74,7 @@ describe("authorization boundaries", () => {
       service.getQuizForStudent({
         classId: "class_1",
         quizId: "quiz_1",
+        studentId: "student_1",
         now: new Date("2026-02-25T18:00:00.000Z"),
       })
     ).rejects.toBeInstanceOf(StudentQuizServiceError);

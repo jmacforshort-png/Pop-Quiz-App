@@ -7,7 +7,8 @@ A lightweight browser quiz app built with plain HTML, CSS, and JavaScript.
 1. Install dependencies: `npm install`
 2. Start local server: `npm run dev`
 3. Open `http://localhost:4173`
-4. Open `http://localhost:4173/admin.html` for class management UI
+4. `index.html` is the auth portal (login + student signup)
+5. Open `http://localhost:4173/admin.html` for class management UI
 
 ## Auth API (PQ-005)
 
@@ -44,7 +45,7 @@ Admin class routes (admin role + session required):
 - `GET /student/results` list submitted attempts with pending/published result visibility
 - `GET /student/quizzes/:quizId` fetch student-safe quiz payload (no answer key fields)
 - student quiz page submits answers to `POST /student/quizzes/:quizId/submit`
-- `POST /student/quizzes/:quizId/submit` grades and stores attempt
+- `POST /student/quizzes/:quizId/submit` grades and stores a single allowed attempt per student
 
 ## Admin Class UI
 
@@ -55,6 +56,7 @@ Admin class routes (admin role + session required):
 - quiz builder includes a lifecycle list to publish quizzes and publish results
 - admin reporting section supports block filter with assigned/submitted/average metrics
 - quiz builder requires per-block visibility start/end date-time
+- students can only submit each quiz once; submitted quizzes are removed from available list
 - assignment schedules are stored as UTC with explicit offsets; student views render times in local timezone
 
 ## Database Setup

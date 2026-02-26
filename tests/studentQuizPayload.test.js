@@ -5,6 +5,9 @@ const {
 
 function createPrismaMock() {
   return {
+    attempt: {
+      findFirst: async () => null,
+    },
     quiz: {
       findFirst: async ({ where }) => {
         if (where.id !== "quiz_1" || where.assignments.some.classId !== "class_1") {
@@ -42,6 +45,7 @@ describe("student safe quiz payload", () => {
     const quiz = await service.getQuizForStudent({
       classId: "class_1",
       quizId: "quiz_1",
+      studentId: "student_1",
       now: new Date("2026-02-25T18:00:00.000Z"),
     });
 
@@ -54,7 +58,27 @@ describe("student safe quiz payload", () => {
     const service = createStudentQuizService({ prisma });
 
     await expect(
-      service.getQuizForStudent({ classId: "class_1", quizId: "missing", now: new Date() })
+      service.getQuizForStudent({
+        classId: "class_1",
+        quizId: "missing",
+        studentId: "student_1",
+        now: new Date(),
+      })
+    ).rejects.toBeInstanceOf(StudentQuizServiceError);
+  });
+
+  it("rejects already-submitted quizzes", async () => {
+    const prisma = createPrismaMock();
+    prisma.attempt.findFirst = async () => ({ id: "attempt_1" });
+    const service = createStudentQuizService({ prisma });
+
+    await expect(
+      service.getQuizForStudent({
+        classId: "class_1",
+        quizId: "quiz_1",
+        studentId: "student_1",
+        now: new Date(),
+      })
     ).rejects.toBeInstanceOf(StudentQuizServiceError);
   });
 });
