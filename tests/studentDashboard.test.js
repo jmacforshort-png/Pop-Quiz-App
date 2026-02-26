@@ -6,6 +6,7 @@ describe("student dashboard ui", () => {
 
     expect(html).toContain('id="student-list"');
     expect(html).toContain('id="student-results-list"');
+    expect(html).toContain('id="student-logout"');
     expect(html).toContain('src="student-dashboard.js"');
   });
 });

@@ -331,10 +331,141 @@ function createQuizService({ prisma }) {
     });
   }
 
+  async function getGradebookReport(adminId, { classId, quizId, weekStart } = {}) {
+    if (classId) {
+      const ownedClass = await prisma.class.findFirst({
+        where: { id: classId, adminId },
+        select: { id: true },
+      });
+      if (!ownedClass) {
+        throw new QuizServiceError(404, "Class not found.");
+      }
+    }
+
+    if (quizId) {
+      const ownedQuiz = await prisma.quiz.findFirst({
+        where: { id: quizId, adminId },
+        select: { id: true },
+      });
+      if (!ownedQuiz) {
+        throw new QuizServiceError(404, "Quiz not found.");
+      }
+    }
+
+    let weekStartUtc;
+    let weekEndUtc;
+    if (weekStart) {
+      const parsed = new Date(`${weekStart}T00:00:00.000Z`);
+      if (Number.isNaN(parsed.getTime())) {
+        throw new QuizServiceError(400, "weekStart must be a valid YYYY-MM-DD date.");
+      }
+
+      weekStartUtc = parsed;
+      weekEndUtc = new Date(parsed.getTime() + 7 * 24 * 60 * 60 * 1000);
+    }
+
+    const quizzes = await prisma.quiz.findMany({
+      where: {
+        adminId,
+        ...(quizId ? { id: quizId } : {}),
+      },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        title: true,
+        assignments: {
+          where: {
+            ...(classId ? { classId } : {}),
+            ...(weekStartUtc
+              ? {
+                  visibleFromUtc: {
+                    gte: weekStartUtc,
+                    lt: weekEndUtc,
+                  },
+                }
+              : {}),
+          },
+          select: {
+            classId: true,
+            visibleUntilUtc: true,
+            class: {
+              select: {
+                id: true,
+                name: true,
+                blockNumber: true,
+                students: {
+                  select: {
+                    id: true,
+                    username: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+        attempts: {
+          select: {
+            studentId: true,
+            score: true,
+            maxScore: true,
+            submittedAt: true,
+          },
+        },
+      },
+    });
+
+    const rows = [];
+    quizzes.forEach((quiz) => {
+      const attemptByStudentId = new Map(
+        quiz.attempts.map((attempt) => [attempt.studentId, attempt])
+      );
+
+      quiz.assignments.forEach((assignment) => {
+        assignment.class.students.forEach((student) => {
+          const attempt = attemptByStudentId.get(student.id) || null;
+          const score = attempt?.score ?? null;
+          const maxScore = attempt?.maxScore ?? null;
+          const percent =
+            score !== null && maxScore ? Math.round((score / maxScore) * 10000) / 100 : null;
+
+          rows.push({
+            studentId: student.id,
+            username: student.username,
+            classId: assignment.class.id,
+            className: assignment.class.name,
+            blockNumber: assignment.class.blockNumber,
+            quizId: quiz.id,
+            quizTitle: quiz.title,
+            status: attempt ? "submitted" : "missing",
+            score,
+            maxScore,
+            percent,
+            submittedAt: attempt?.submittedAt ?? null,
+            late: attempt
+              ? new Date(attempt.submittedAt) > new Date(assignment.visibleUntilUtc)
+              : false,
+          });
+        });
+      });
+    });
+
+    rows.sort((left, right) => {
+      const usernameOrder = left.username.localeCompare(right.username);
+      if (usernameOrder !== 0) {
+        return usernameOrder;
+      }
+
+      return left.quizTitle.localeCompare(right.quizTitle);
+    });
+
+    return rows;
+  }
+
   return {
     createDraftQuiz,
     getQuizById,
     listQuizzes,
+    getGradebookReport,
     getQuizSummaryReport,
     publishResults,
     publishQuiz,

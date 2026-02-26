@@ -8,6 +8,7 @@ const descriptionText = document.getElementById("student-quiz-description");
 const questionWrap = document.getElementById("student-quiz-questions");
 const submitButton = document.getElementById("submit-student-quiz");
 const messageText = document.getElementById("student-quiz-message");
+const logoutButton = document.getElementById("student-logout");
 
 let loadedQuiz = null;
 
@@ -134,6 +135,14 @@ submitButton.addEventListener("click", async () => {
   }
 
   setMessage("Quiz submitted. Results are hidden until your teacher publishes them.");
+});
+
+logoutButton?.addEventListener("click", async () => {
+  await fetch(`${API_BASE}/auth/logout`, {
+    method: "POST",
+    credentials: "include",
+  });
+  window.location.href = "index.html";
 });
 
 loadQuiz();

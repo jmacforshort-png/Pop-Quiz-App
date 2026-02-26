@@ -18,6 +18,19 @@ function createAuthApp({ prisma, jwtSecret }) {
   const quizService = createQuizService({ prisma });
   const app = express();
 
+  function toCsvValue(value) {
+    if (value === null || value === undefined) {
+      return "";
+    }
+
+    const text = String(value);
+    if (text.includes(",") || text.includes('"') || text.includes("\n")) {
+      return `"${text.replace(/"/g, '""')}"`;
+    }
+
+    return text;
+  }
+
   app.use((req, res, next) => {
     res.header("Access-Control-Allow-Origin", "http://localhost:4173");
     res.header("Access-Control-Allow-Credentials", "true");
@@ -333,6 +346,84 @@ function createAuthApp({ prisma, jwtSecret }) {
     const quizzes = await quizService.listQuizzes(req.auth.sub);
     return res.status(200).json({ quizzes });
   });
+
+  app.get(
+    "/admin/reports/gradebook",
+    requireAuth(jwtSecret),
+    requireRole("admin"),
+    async (req, res) => {
+      try {
+        const rows = await quizService.getGradebookReport(req.auth.sub, {
+          classId: req.query.classId || undefined,
+          quizId: req.query.quizId || undefined,
+          weekStart: req.query.weekStart || undefined,
+        });
+        return res.status(200).json({ rows });
+      } catch (error) {
+        if (error instanceof QuizServiceError) {
+          return res.status(error.statusCode).json({ error: error.message });
+        }
+
+        return res.status(500).json({ error: "Unable to load gradebook report." });
+      }
+    }
+  );
+
+  app.get(
+    "/admin/reports/gradebook/export.csv",
+    requireAuth(jwtSecret),
+    requireRole("admin"),
+    async (req, res) => {
+      try {
+        const rows = await quizService.getGradebookReport(req.auth.sub, {
+          classId: req.query.classId || undefined,
+          quizId: req.query.quizId || undefined,
+          weekStart: req.query.weekStart || undefined,
+        });
+
+        const headers = [
+          "studentId",
+          "username",
+          "classId",
+          "className",
+          "blockNumber",
+          "quizId",
+          "quizTitle",
+          "status",
+          "score",
+          "maxScore",
+          "percent",
+          "submittedAt",
+          "late",
+        ];
+
+        const lines = [headers.join(",")];
+        rows.forEach((row) => {
+          lines.push(
+            headers
+              .map((header) => {
+                const value =
+                  header === "submittedAt" && row.submittedAt
+                    ? new Date(row.submittedAt).toISOString()
+                    : row[header];
+                return toCsvValue(value);
+              })
+              .join(",")
+          );
+        });
+
+        res.setHeader("Content-Type", "text/csv; charset=utf-8");
+        res.setHeader("Content-Disposition", 'attachment; filename="gradebook.csv"');
+        return res.status(200).send(lines.join("\n"));
+      } catch (error) {
+        if (error instanceof QuizServiceError) {
+          return res.status(error.statusCode).json({ error: error.message });
+        }
+
+        return res.status(500).json({ error: "Unable to export gradebook report." });
+      }
+    }
+  );
 
   app.get(
     "/admin/reports/quiz-summary",

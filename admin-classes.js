@@ -10,6 +10,7 @@ const table = document.getElementById("classes-table");
 const tableBody = document.getElementById("classes-table-body");
 const emptyState = document.getElementById("classes-empty");
 const refreshButton = document.getElementById("refresh-classes");
+const logoutButton = document.getElementById("admin-logout");
 
 let editingClassId = null;
 
@@ -155,6 +156,14 @@ cancelEditBtn.addEventListener("click", () => {
 
 refreshButton.addEventListener("click", async () => {
   await loadClasses();
+});
+
+logoutButton?.addEventListener("click", async () => {
+  await fetch(`${API_BASE}/auth/logout`, {
+    method: "POST",
+    credentials: "include",
+  });
+  window.location.href = "index.html";
 });
 
 loadClasses();

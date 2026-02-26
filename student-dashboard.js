@@ -6,6 +6,7 @@ const emptyState = document.getElementById("student-empty");
 const listContainer = document.getElementById("student-list");
 const resultsEmptyState = document.getElementById("student-results-empty");
 const resultsListContainer = document.getElementById("student-results-list");
+const logoutButton = document.getElementById("student-logout");
 
 function setMessage(text, isError = false) {
   messageText.textContent = text;
@@ -135,6 +136,14 @@ async function loadStudentQuizzes() {
 
 refreshButton.addEventListener("click", async () => {
   await loadStudentQuizzes();
+});
+
+logoutButton?.addEventListener("click", async () => {
+  await fetch(`${API_BASE}/auth/logout`, {
+    method: "POST",
+    credentials: "include",
+  });
+  window.location.href = "index.html";
 });
 
 loadStudentQuizzes();
