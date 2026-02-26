@@ -23,6 +23,10 @@ function createAuditPrismaMock() {
 }
 
 describe("audit service", () => {
+  it("exposes gradebook export audit action", () => {
+    expect(AUDIT_ACTIONS.GRADEBOOK_EXPORTED).toBe("GRADEBOOK_EXPORTED");
+  });
+
   it("records audit events", async () => {
     const prisma = createAuditPrismaMock();
     const auditService = createAuditService({ prisma });

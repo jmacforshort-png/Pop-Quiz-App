@@ -645,6 +645,7 @@ function createQuizService({ prisma }) {
             score: true,
             maxScore: true,
             submittedAt: true,
+            late: true,
           },
         },
       },
@@ -678,7 +679,8 @@ function createQuizService({ prisma }) {
             percent,
             submittedAt: attempt?.submittedAt ?? null,
             late: attempt
-              ? new Date(attempt.submittedAt) > new Date(assignment.visibleUntilUtc)
+              ? (attempt.late ??
+                new Date(attempt.submittedAt) > new Date(assignment.visibleUntilUtc))
               : false,
           });
         });

@@ -16,6 +16,7 @@ const logoutButton = document.getElementById("student-logout");
 let loadedQuiz = null;
 let quizWindow = null;
 let countdownTimerId = null;
+let quizStartedAtIso = null;
 
 function setMessage(text, isError = false) {
   messageText.textContent = text;
@@ -151,6 +152,7 @@ async function loadQuiz() {
 
   const data = await response.json();
   renderQuiz(data.quiz);
+  quizStartedAtIso = new Date().toISOString();
   const feedResponse = await fetch(`${API_BASE}/student/quiz-feed`, { credentials: "include" });
   if (feedResponse.ok) {
     const feedData = await feedResponse.json();
@@ -185,7 +187,7 @@ submitButton.addEventListener("click", async () => {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     credentials: "include",
-    body: JSON.stringify({ answers }),
+    body: JSON.stringify({ answers, startedAt: quizStartedAtIso }),
   });
 
   if (!response.ok) {

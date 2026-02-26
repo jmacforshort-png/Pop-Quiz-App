@@ -77,6 +77,8 @@ model Quiz {
   assignments QuizClassAssignment[]
   attempts    Attempt[]
   auditLogs   AuditLog[]
+
+  @@index([adminId, status, createdAt])
 }
 
 model Question {
@@ -115,13 +117,17 @@ model QuizClassAssignment {
   class Class @relation(fields: [classId], references: [id], onDelete: Cascade)
 
   @@unique([quizId, classId])
+  @@index([classId, visibleFromUtc, visibleUntilUtc])
+  @@index([quizId, visibleFromUtc])
 }
 
 model Attempt {
   id          String        @id @default(cuid())
   quizId      String
   studentId   String
+  startedAt   DateTime?
   submittedAt DateTime
+  late        Boolean       @default(false)
   score       Int
   maxScore    Int           @default(5)
   status      AttemptStatus @default(submitted)
@@ -132,6 +138,9 @@ model Attempt {
   answers AttemptAnswer[]
 
   @@unique([quizId, studentId])
+  @@index([quizId, submittedAt])
+  @@index([studentId, submittedAt])
+  @@index([late])
 }
 
 model AttemptAnswer {

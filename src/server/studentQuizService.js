@@ -5,6 +5,19 @@ class StudentQuizServiceError extends Error {
   }
 }
 
+function parseMaybeDate(value, fieldName) {
+  if (value === undefined || value === null || value === "") {
+    return null;
+  }
+
+  const parsed = new Date(value);
+  if (Number.isNaN(parsed.getTime())) {
+    throw new StudentQuizServiceError(400, `${fieldName} must be a valid ISO timestamp.`);
+  }
+
+  return parsed;
+}
+
 function createStudentQuizService({ prisma }) {
   if (!prisma) {
     throw new Error("createStudentQuizService requires prisma client.");
@@ -186,7 +199,14 @@ function createStudentQuizService({ prisma }) {
     });
   }
 
-  async function submitQuizAttempt({ classId, quizId, studentId, answers, now = new Date() }) {
+  async function submitQuizAttempt({
+    classId,
+    quizId,
+    studentId,
+    answers,
+    startedAt,
+    now = new Date(),
+  }) {
     if (!classId || !studentId) {
       throw new StudentQuizServiceError(400, "Student identity is required.");
     }
@@ -233,6 +253,11 @@ function createStudentQuizService({ prisma }) {
             },
           },
         },
+        assignments: {
+          where: { classId },
+          select: { visibleUntilUtc: true },
+          take: 1,
+        },
       },
     });
     if (!quiz) {
@@ -276,6 +301,10 @@ function createStudentQuizService({ prisma }) {
     });
 
     const score = gradedAnswers.filter((answer) => answer.isCorrect).length;
+    const parsedStartedAt = parseMaybeDate(startedAt, "startedAt");
+    const submittedAt = now;
+    const visibleUntilUtc = quiz.assignments?.[0]?.visibleUntilUtc || null;
+    const late = visibleUntilUtc ? submittedAt > new Date(visibleUntilUtc) : false;
 
     let attempt;
     try {
@@ -283,7 +312,9 @@ function createStudentQuizService({ prisma }) {
         data: {
           quizId,
           studentId,
-          submittedAt: now,
+          startedAt: parsedStartedAt,
+          submittedAt,
+          late,
           score,
           maxScore: quiz.questions.length,
           status: "submitted",
@@ -293,8 +324,10 @@ function createStudentQuizService({ prisma }) {
         },
         select: {
           id: true,
+          startedAt: true,
           score: true,
           maxScore: true,
+          late: true,
           submittedAt: true,
         },
       });
@@ -307,10 +340,12 @@ function createStudentQuizService({ prisma }) {
 
     return {
       id: attempt.id,
+      startedAt: attempt.startedAt,
       submittedAt: attempt.submittedAt,
       resultStatus: quiz.resultStatus,
       score: quiz.resultStatus === "published" ? attempt.score : null,
       maxScore: attempt.maxScore,
+      late: attempt.late,
     };
   }
 
