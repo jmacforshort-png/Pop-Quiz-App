@@ -38,10 +38,12 @@ Admin class routes (admin role + session required):
 - `POST /admin/quizzes` for fixed-format draft quiz creation
 - `GET /admin/quizzes` list admin quizzes
 - `GET /admin/reports/quiz-summary` report assigned/submitted/average score metrics (optional `blockNumber`)
+- `GET /admin/reports/operations-summary` Today/This Week aggregates with quick-publish candidates (optional `timezoneOffsetMinutes`)
 - `GET /admin/reports/gradebook` row-level gradebook (`classId`, `quizId`, `weekStart` filters)
 - `GET /admin/reports/gradebook/export.csv` CSV export using the same gradebook filters
 - `GET /admin/quizzes/:quizId` load a quiz for editing
 - `PUT /admin/quizzes/:quizId` update a draft quiz
+- `POST /admin/quizzes/:quizId/duplicate` clone any existing quiz into a new draft
 - `POST /admin/quizzes/:quizId/publish` publish a draft quiz
 - `POST /admin/quizzes/:quizId/publish-results` release student scores for a published quiz
 - `GET /student/quizzes` list currently available published quizzes for the logged-in student
@@ -57,9 +59,11 @@ Admin class routes (admin role + session required):
 - To override API base URL, set `localStorage.popQuizApiBase` in browser devtools
 - `admin-quizzes.html` provides fixed 5-question quiz draft builder
 - `admin-gradebook.html` provides sortable gradebook rows with CSV export
+- quiz builder includes Today/This Week summary metrics and quick Publish Results actions
+- quiz lifecycle table supports one-click quiz duplication into a draft
 - quiz builder includes a lifecycle list to publish quizzes and publish results
 - admin reporting section supports block filter with assigned/submitted/average metrics
-- quiz builder requires per-block visibility start/end date-time
+- quiz builder supports per-block schedule presets plus start/end date-time
 - students can only submit each quiz once; submitted quizzes are removed from available list
 - assignment schedules are stored as UTC with explicit offsets; student views render times in local timezone
 

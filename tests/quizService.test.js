@@ -183,6 +183,21 @@ describe("quiz service", () => {
     expect(published.publishedAt).toBeInstanceOf(Date);
   });
 
+  it("duplicates an existing quiz into a new draft", async () => {
+    const prisma = createQuizPrismaMock();
+    const quizService = createQuizService({ prisma });
+    const created = await quizService.createDraftQuiz("admin_1", validQuizPayload());
+    await quizService.publishQuiz("admin_1", created.id);
+
+    const duplicated = await quizService.duplicateQuiz("admin_1", created.id);
+
+    expect(duplicated.id).not.toBe(created.id);
+    expect(duplicated.status).toBe("draft");
+    expect(duplicated.title).toBe("Unit 1 Quiz (Copy)");
+    expect(duplicated.questions).toHaveLength(5);
+    expect(duplicated.assignments).toHaveLength(2);
+  });
+
   it("rejects publishing non-draft quizzes", async () => {
     const prisma = createQuizPrismaMock();
     const quizService = createQuizService({ prisma });
@@ -368,5 +383,59 @@ describe("quiz service", () => {
     expect(report).toHaveLength(1);
     expect(report[0].blockNumbers).toEqual([2]);
     expect(report[0].assignedCount).toBe(1);
+  });
+
+  it("returns today and week operations summary metrics", async () => {
+    const prisma = {
+      quiz: {
+        findMany: async () => [
+          {
+            id: "quiz_1",
+            title: "Active Quiz",
+            resultStatus: "hidden",
+            assignments: [
+              {
+                visibleFromUtc: new Date("2026-02-25T16:00:00.000Z"),
+                visibleUntilUtc: new Date("2026-02-25T22:00:00.000Z"),
+                class: {
+                  students: [{ id: "student_1" }, { id: "student_2" }],
+                },
+              },
+            ],
+            attempts: [{ studentId: "student_1" }],
+          },
+          {
+            id: "quiz_2",
+            title: "Older Quiz",
+            resultStatus: "published",
+            assignments: [
+              {
+                visibleFromUtc: new Date("2026-02-23T16:00:00.000Z"),
+                visibleUntilUtc: new Date("2026-02-23T22:00:00.000Z"),
+                class: {
+                  students: [{ id: "student_3" }],
+                },
+              },
+            ],
+            attempts: [{ studentId: "student_3" }],
+          },
+        ],
+      },
+    };
+    const quizService = createQuizService({ prisma });
+
+    const summary = await quizService.getOperationsSummary("admin_1", {
+      timezoneOffsetMinutes: 0,
+      now: "2026-02-25T18:00:00.000Z",
+    });
+
+    expect(summary.today.activeQuizCount).toBe(1);
+    expect(summary.today.assignedCount).toBe(2);
+    expect(summary.today.submittedCount).toBe(1);
+    expect(summary.today.publishable).toHaveLength(1);
+
+    expect(summary.thisWeek.activeQuizCount).toBe(2);
+    expect(summary.thisWeek.assignedCount).toBe(3);
+    expect(summary.thisWeek.submittedCount).toBe(2);
   });
 });
