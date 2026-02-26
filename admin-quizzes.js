@@ -8,8 +8,12 @@ const questionCards = document.getElementById("question-cards");
 const quizMessage = document.getElementById("quiz-message");
 const draftSelect = document.getElementById("draft-select");
 const refreshQuizzesButton = document.getElementById("refresh-quizzes");
+const refreshTemplatesButton = document.getElementById("refresh-templates");
 const newQuizButton = document.getElementById("new-quiz");
 const publishQuizButton = document.getElementById("publish-quiz");
+const templateSelect = document.getElementById("template-select");
+const loadTemplateButton = document.getElementById("load-template");
+const saveTemplateButton = document.getElementById("save-template");
 const quizListEmpty = document.getElementById("quiz-list-empty");
 const quizListTable = document.getElementById("quiz-list-table");
 const quizListBody = document.getElementById("quiz-list-body");
@@ -400,6 +404,14 @@ function renderQuizList(quizzes) {
     duplicateButton.textContent = "Duplicate";
     actionsCell.appendChild(duplicateButton);
 
+    const saveTemplateActionButton = document.createElement("button");
+    saveTemplateActionButton.type = "button";
+    saveTemplateActionButton.className = "action-btn";
+    saveTemplateActionButton.dataset.action = "saveTemplate";
+    saveTemplateActionButton.dataset.quizId = quiz.id;
+    saveTemplateActionButton.textContent = "Save Template";
+    actionsCell.appendChild(saveTemplateActionButton);
+
     if (quiz.status === "draft") {
       const editButton = document.createElement("button");
       editButton.type = "button";
@@ -463,6 +475,86 @@ async function loadDrafts() {
     option.textContent = draft.title;
     draftSelect.appendChild(option);
   });
+}
+
+function renderTemplates(templates) {
+  const previousValue = templateSelect.value;
+  templateSelect.innerHTML = '<option value="">Select a template</option>';
+
+  templates.forEach((template) => {
+    const option = document.createElement("option");
+    option.value = template.id;
+    option.textContent = template.title;
+    templateSelect.appendChild(option);
+  });
+
+  if (previousValue && templates.some((template) => template.id === previousValue)) {
+    templateSelect.value = previousValue;
+  }
+}
+
+async function loadTemplates() {
+  const response = await fetch(`${API_BASE}/admin/templates`, { credentials: "include" });
+  if (!response.ok) {
+    setMessage("Unable to load templates.", true);
+    renderTemplates([]);
+    return;
+  }
+
+  const data = await response.json();
+  renderTemplates(data.templates || []);
+}
+
+function applyTemplateToForm(template) {
+  if (!template?.questions?.length) {
+    setMessage("Selected template is empty.", true);
+    return;
+  }
+
+  const cards = Array.from(document.querySelectorAll(".question-card"));
+  if (cards.length !== QUESTION_COUNT) {
+    renderQuestionCards();
+  }
+
+  editingQuizId = null;
+  syncActionState();
+  draftSelect.value = "";
+  quizTitleInput.value = `${template.title} (New)`;
+  quizDescriptionInput.value = template.description || "";
+
+  const activeCards = Array.from(document.querySelectorAll(".question-card"));
+  template.questions.forEach((question, index) => {
+    const card = activeCards[index];
+    if (!card) {
+      return;
+    }
+    card.querySelector('[data-role="prompt"]').value = question.prompt;
+    question.choices.forEach((choice) => {
+      const choiceInput = card.querySelector(
+        `[data-role="choice"][data-choice-label="${choice.label}"]`
+      );
+      if (choiceInput) {
+        choiceInput.value = choice.text;
+      }
+    });
+    const answerKey = question.choices.find((choice) => choice.isCorrect)?.label || "A";
+    card.querySelector('[data-role="answerKey"]').value = answerKey;
+  });
+
+  document.querySelectorAll('[data-role="assignment"]').forEach((checkbox) => {
+    checkbox.checked = false;
+  });
+  document.querySelectorAll('[data-role="visibleFrom"]').forEach((input) => {
+    input.value = "";
+  });
+  document.querySelectorAll('[data-role="visibleUntil"]').forEach((input) => {
+    input.value = "";
+  });
+  document.querySelectorAll('[data-role="schedulePreset"]').forEach((input) => {
+    input.value = "custom";
+  });
+
+  setMessage(`Template loaded: ${template.title}. Choose blocks and save as draft.`);
 }
 
 function resetQuizForm() {
@@ -613,6 +705,24 @@ function applySchedulePreset(classId, presetKey) {
   }
 }
 
+async function saveQuizAsTemplate(quizId) {
+  const response = await fetch(`${API_BASE}/admin/templates`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({ quizId }),
+  });
+  if (!response.ok) {
+    const errorPayload = await response.json().catch(() => ({}));
+    setMessage(errorPayload.error || "Unable to save template.", true);
+    return null;
+  }
+
+  const data = await response.json();
+  await loadTemplates();
+  return data.template;
+}
+
 assignmentList.addEventListener("change", (event) => {
   const presetSelect = event.target.closest('select[data-role="schedulePreset"]');
   if (presetSelect) {
@@ -688,6 +798,7 @@ draftSelect.addEventListener("change", async () => {
 
 refreshQuizzesButton.addEventListener("click", async () => {
   await loadDrafts();
+  await loadTemplates();
   await loadReport();
   await loadSummary();
   setMessage("Draft list refreshed.");
@@ -751,10 +862,19 @@ quizListBody.addEventListener("click", async (event) => {
 
     const data = await response.json();
     await loadDrafts();
+    await loadTemplates();
     await loadSummary();
     draftSelect.value = data.quiz.id;
     await loadQuizIntoForm(data.quiz.id);
     setMessage("Quiz duplicated into a new draft.");
+    return;
+  }
+
+  if (action === "saveTemplate") {
+    const template = await saveQuizAsTemplate(quizId);
+    if (template) {
+      setMessage(`Template saved: ${template.title}`);
+    }
     return;
   }
 
@@ -807,6 +927,43 @@ refreshSummaryButton.addEventListener("click", async () => {
   setMessage("Summary refreshed.");
 });
 
+refreshTemplatesButton?.addEventListener("click", async () => {
+  await loadTemplates();
+  setMessage("Templates refreshed.");
+});
+
+loadTemplateButton?.addEventListener("click", async () => {
+  const templateId = templateSelect.value;
+  if (!templateId) {
+    setMessage("Select a template first.", true);
+    return;
+  }
+
+  const response = await fetch(`${API_BASE}/admin/templates/${templateId}`, {
+    credentials: "include",
+  });
+  if (!response.ok) {
+    const errorPayload = await response.json().catch(() => ({}));
+    setMessage(errorPayload.error || "Unable to load template.", true);
+    return;
+  }
+
+  const data = await response.json();
+  applyTemplateToForm(data.template);
+});
+
+saveTemplateButton?.addEventListener("click", async () => {
+  if (!editingQuizId) {
+    setMessage("Load or save a draft quiz first, then save it as a template.", true);
+    return;
+  }
+
+  const template = await saveQuizAsTemplate(editingQuizId);
+  if (template) {
+    setMessage(`Template saved: ${template.title}`);
+  }
+});
+
 reportBlockFilter.addEventListener("change", async () => {
   await loadReport();
 });
@@ -846,4 +1003,4 @@ logoutButton?.addEventListener("click", async () => {
 
 renderQuestionCards();
 syncActionState();
-loadAssignments().then(loadDrafts).then(loadReport).then(loadSummary);
+loadAssignments().then(loadDrafts).then(loadTemplates).then(loadReport).then(loadSummary);

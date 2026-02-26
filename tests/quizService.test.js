@@ -36,6 +36,7 @@ function createQuizPrismaMock() {
   ];
 
   const quizzes = [];
+  const templates = [];
 
   return {
     class: {
@@ -127,6 +128,38 @@ function createQuizPrismaMock() {
         return quiz;
       },
     },
+    quizTemplate: {
+      create: async ({ data }) => {
+        const template = {
+          id: `template_${templates.length + 1}`,
+          adminId: data.adminId,
+          title: data.title,
+          description: data.description,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+          questions: data.questions.create.map((question) => ({
+            orderIndex: question.orderIndex,
+            prompt: question.prompt,
+            choices: question.choices.create,
+          })),
+        };
+        templates.push(template);
+        return template;
+      },
+      findMany: async ({ where }) => {
+        return templates.filter((template) => template.adminId === where.adminId);
+      },
+      findFirst: async ({ where }) => {
+        return (
+          templates.find((template) => {
+            if (where.id && template.id !== where.id) {
+              return false;
+            }
+            return template.adminId === where.adminId;
+          }) ?? null
+        );
+      },
+    },
   };
 }
 
@@ -196,6 +229,21 @@ describe("quiz service", () => {
     expect(duplicated.title).toBe("Unit 1 Quiz (Copy)");
     expect(duplicated.questions).toHaveLength(5);
     expect(duplicated.assignments).toHaveLength(2);
+  });
+
+  it("saves a quiz as template and lists templates", async () => {
+    const prisma = createQuizPrismaMock();
+    const quizService = createQuizService({ prisma });
+    const created = await quizService.createDraftQuiz("admin_1", validQuizPayload());
+
+    const template = await quizService.saveQuizAsTemplate("admin_1", created.id);
+    const templates = await quizService.listTemplates("admin_1");
+    const loadedTemplate = await quizService.getTemplateById("admin_1", template.id);
+
+    expect(template.title).toBe("Unit 1 Quiz");
+    expect(template.questions).toHaveLength(5);
+    expect(templates).toHaveLength(1);
+    expect(loadedTemplate.id).toBe(template.id);
   });
 
   it("rejects publishing non-draft quizzes", async () => {

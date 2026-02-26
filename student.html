@@ -18,7 +18,7 @@
       <header class="hero">
         <p class="kicker">Student Panel</p>
         <h1>Available Quizzes</h1>
-        <p class="subtitle">Take quizzes assigned to your class during their active windows.</p>
+        <p class="subtitle">See what is open now, what is coming up, and what has closed.</p>
         <div class="row-actions">
           <button id="student-logout" type="button" class="btn secondary">Log Out</button>
         </div>
@@ -34,6 +34,18 @@
 
         <div id="student-empty" class="empty-state">No quizzes available right now.</div>
         <div id="student-list" class="student-list" hidden></div>
+
+        <div class="section-head">
+          <h2>Upcoming</h2>
+        </div>
+        <div id="student-upcoming-empty" class="empty-state">No upcoming quizzes.</div>
+        <div id="student-upcoming-list" class="student-list" hidden></div>
+
+        <div class="section-head">
+          <h2>Closed</h2>
+        </div>
+        <div id="student-closed-empty" class="empty-state">No closed quizzes.</div>
+        <div id="student-closed-list" class="student-list" hidden></div>
 
         <hr />
 

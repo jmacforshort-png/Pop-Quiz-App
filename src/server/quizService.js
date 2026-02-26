@@ -23,6 +23,20 @@ function toQuestionCreateInput(questions) {
   }));
 }
 
+function toTemplateQuestionCreateInput(questions) {
+  return questions.map((question, index) => ({
+    orderIndex: index + 1,
+    prompt: question.prompt,
+    choices: {
+      create: question.choices.map((choice) => ({
+        label: choice.label,
+        text: choice.text,
+        isCorrect: choice.isCorrect,
+      })),
+    },
+  }));
+}
+
 async function validateAndBuildQuizData(prisma, adminId, payload) {
   const parsed = baseQuizSchema.safeParse(payload);
   if (!parsed.success) {
@@ -92,6 +106,15 @@ const QUIZ_INCLUDE = {
     },
     orderBy: { visibleFromUtc: "asc" },
   },
+  questions: {
+    include: {
+      choices: true,
+    },
+    orderBy: { orderIndex: "asc" },
+  },
+};
+
+const TEMPLATE_INCLUDE = {
   questions: {
     include: {
       choices: true,
@@ -221,6 +244,52 @@ function createQuizService({ prisma }) {
       },
       include: QUIZ_INCLUDE,
     });
+  }
+
+  async function listTemplates(adminId) {
+    return prisma.quizTemplate.findMany({
+      where: { adminId },
+      orderBy: { updatedAt: "desc" },
+      include: TEMPLATE_INCLUDE,
+    });
+  }
+
+  async function saveQuizAsTemplate(adminId, quizId, { title } = {}) {
+    if (!quizId || typeof quizId !== "string") {
+      throw new QuizServiceError(400, "quizId is required.");
+    }
+
+    const sourceQuiz = await prisma.quiz.findFirst({
+      where: { id: quizId, adminId },
+      include: QUIZ_INCLUDE,
+    });
+    if (!sourceQuiz) {
+      throw new QuizServiceError(404, "Quiz not found.");
+    }
+
+    return prisma.quizTemplate.create({
+      data: {
+        adminId,
+        title: title?.trim() || sourceQuiz.title,
+        description: sourceQuiz.description,
+        questions: {
+          create: toTemplateQuestionCreateInput(sourceQuiz.questions),
+        },
+      },
+      include: TEMPLATE_INCLUDE,
+    });
+  }
+
+  async function getTemplateById(adminId, templateId) {
+    const template = await prisma.quizTemplate.findFirst({
+      where: { id: templateId, adminId },
+      include: TEMPLATE_INCLUDE,
+    });
+    if (!template) {
+      throw new QuizServiceError(404, "Template not found.");
+    }
+
+    return template;
   }
 
   async function updateDraftQuiz(adminId, quizId, payload) {
@@ -631,13 +700,16 @@ function createQuizService({ prisma }) {
   return {
     createDraftQuiz,
     duplicateQuiz,
+    getTemplateById,
     getQuizById,
     getOperationsSummary,
+    listTemplates,
     listQuizzes,
     getGradebookReport,
     getQuizSummaryReport,
     publishResults,
     publishQuiz,
+    saveQuizAsTemplate,
     updateDraftQuiz,
   };
 }

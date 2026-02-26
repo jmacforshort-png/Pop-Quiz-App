@@ -42,6 +42,7 @@ model User {
   ownedQuizzes Quiz[]     @relation("AdminQuizzes")
   attempts     Attempt[]
   auditLogs    AuditLog[]
+  templates    QuizTemplate[] @relation("AdminQuizTemplates")
 }
 
 model Class {
@@ -160,4 +161,40 @@ model AuditLog {
 
   @@index([actorUserId, createdAt])
   @@index([targetType, targetId])
+}
+
+model QuizTemplate {
+  id          String   @id @default(cuid())
+  adminId     String
+  title       String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  admin     User               @relation("AdminQuizTemplates", fields: [adminId], references: [id], onDelete: Cascade)
+  questions TemplateQuestion[]
+}
+
+model TemplateQuestion {
+  id         String @id @default(cuid())
+  templateId String
+  orderIndex Int
+  prompt     String
+
+  template QuizTemplate    @relation(fields: [templateId], references: [id], onDelete: Cascade)
+  choices  TemplateChoice[]
+
+  @@unique([templateId, orderIndex])
+}
+
+model TemplateChoice {
+  id         String  @id @default(cuid())
+  questionId String
+  label      String
+  text       String
+  isCorrect  Boolean
+
+  question TemplateQuestion @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  @@unique([questionId, label])
 }
