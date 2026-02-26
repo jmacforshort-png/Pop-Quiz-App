@@ -38,6 +38,7 @@ function createSubmissionPrismaMock() {
       },
     },
     attempt: {
+      findFirst: async () => null,
       create: async ({ data }) => ({
         id: "attempt_1",
         score: data.score,
@@ -129,5 +130,23 @@ describe("student quiz submission", () => {
 
     expect(attempt.score).toBe(1);
     expect(attempt.resultStatus).toBe("published");
+  });
+
+  it("rejects duplicate submissions for same quiz/student", async () => {
+    const prisma = createSubmissionPrismaMock();
+    prisma.attempt.findFirst = async () => ({ id: "attempt_1" });
+    const service = createStudentQuizService({ prisma });
+
+    await expect(
+      service.submitQuizAttempt({
+        classId: "class_1",
+        quizId: "quiz_1",
+        studentId: "student_1",
+        answers: [
+          { questionId: "q1", selectedLabel: "A" },
+          { questionId: "q2", selectedLabel: "B" },
+        ],
+      })
+    ).rejects.toBeInstanceOf(StudentQuizServiceError);
   });
 });

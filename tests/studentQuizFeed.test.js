@@ -69,7 +69,8 @@ function createStudentQuizPrismaMock() {
 
           return (
             assignment.visibleFromUtc <= where.assignments.some.visibleFromUtc.lte &&
-            assignment.visibleUntilUtc > where.assignments.some.visibleUntilUtc.gt
+            assignment.visibleUntilUtc > where.assignments.some.visibleUntilUtc.gt &&
+            where.attempts.none.studentId === "student_1"
           );
         });
       },
@@ -84,6 +85,7 @@ describe("student quiz feed service", () => {
 
     const result = await service.listAvailableQuizzes({
       classId: "class_1",
+      studentId: "student_1",
       now: new Date("2026-02-25T18:00:00.000Z"),
     });
 
@@ -95,8 +97,8 @@ describe("student quiz feed service", () => {
     const prisma = createStudentQuizPrismaMock();
     const service = createStudentQuizService({ prisma });
 
-    await expect(service.listAvailableQuizzes({ now: new Date() })).rejects.toBeInstanceOf(
-      StudentQuizServiceError
-    );
+    await expect(
+      service.listAvailableQuizzes({ studentId: "student_1", now: new Date() })
+    ).rejects.toBeInstanceOf(StudentQuizServiceError);
   });
 });

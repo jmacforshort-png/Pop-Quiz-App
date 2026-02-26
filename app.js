@@ -1,161 +1,119 @@
-const QUESTIONS = [
-  {
-    prompt: "Which planet is known as the Red Planet?",
-    choices: ["Mars", "Jupiter", "Venus", "Mercury"],
-    answer: "Mars",
-  },
-  {
-    prompt: "What does CSS stand for?",
-    choices: [
-      "Cascading Style Sheets",
-      "Computer Style Syntax",
-      "Colorful Style Structure",
-      "Core Styling System",
-    ],
-    answer: "Cascading Style Sheets",
-  },
-  {
-    prompt: "Which company created the React library?",
-    choices: ["Google", "Meta", "Microsoft", "Apple"],
-    answer: "Meta",
-  },
-  {
-    prompt: "What year did JavaScript first appear?",
-    choices: ["1995", "2001", "1988", "2010"],
-    answer: "1995",
-  },
-  {
-    prompt: "Which data type is immutable in JavaScript?",
-    choices: ["Array", "Object", "String", "Map"],
-    answer: "String",
-  },
-];
+const API_BASE = window.localStorage.getItem("popQuizApiBase") || "http://localhost:3000";
 
-const state = {
-  index: 0,
-  score: 0,
-  timeLeft: 15,
-  timerId: null,
-  isLocked: false,
-};
+const loginForm = document.getElementById("login-form");
+const loginUsernameInput = document.getElementById("login-username");
+const loginPasswordInput = document.getElementById("login-password");
+const signupForm = document.getElementById("signup-form");
+const signupUsernameInput = document.getElementById("signup-username");
+const signupPasswordInput = document.getElementById("signup-password");
+const signupBlockSelect = document.getElementById("signup-block");
+const messageText = document.getElementById("auth-message");
 
-const startScreen = document.getElementById("start-screen");
-const questionScreen = document.getElementById("question-screen");
-const resultScreen = document.getElementById("result-screen");
-const startBtn = document.getElementById("start-btn");
-const restartBtn = document.getElementById("restart-btn");
-const questionText = document.getElementById("question-text");
-const answerList = document.getElementById("answer-list");
-const questionCount = document.getElementById("question-count");
-const timerText = document.getElementById("timer");
-const scoreText = document.getElementById("score-text");
-
-function showPanel(panel) {
-  [startScreen, questionScreen, resultScreen].forEach((item) => item.classList.remove("active"));
-  panel.classList.add("active");
+function setMessage(text, isError = false) {
+  messageText.textContent = text;
+  messageText.style.color = isError ? "var(--bad)" : "var(--muted)";
 }
 
-function resetState() {
-  state.index = 0;
-  state.score = 0;
-  state.timeLeft = 15;
-  state.isLocked = false;
-  clearInterval(state.timerId);
-  state.timerId = null;
-}
-
-function startTimer() {
-  clearInterval(state.timerId);
-  timerText.textContent = `${state.timeLeft}s`;
-
-  state.timerId = setInterval(() => {
-    state.timeLeft -= 1;
-    timerText.textContent = `${state.timeLeft}s`;
-
-    if (state.timeLeft <= 0) {
-      clearInterval(state.timerId);
-      lockQuestion(null);
-      setTimeout(nextQuestion, 650);
-    }
-  }, 1000);
-}
-
-function renderQuestion() {
-  const current = QUESTIONS[state.index];
-  state.timeLeft = 15;
-  state.isLocked = false;
-
-  questionCount.textContent = `Question ${state.index + 1} / ${QUESTIONS.length}`;
-  questionText.textContent = current.prompt;
-  answerList.innerHTML = "";
-
-  current.choices.forEach((choice) => {
-    const button = document.createElement("button");
-    button.type = "button";
-    button.className = "answer-btn";
-    button.textContent = choice;
-    button.addEventListener("click", () => lockQuestion(button));
-    answerList.appendChild(button);
-  });
-
-  startTimer();
-}
-
-function lockQuestion(selectedBtn) {
-  if (state.isLocked) {
+function redirectForRole(role) {
+  if (role === "admin") {
+    window.location.href = "admin.html";
     return;
   }
 
-  state.isLocked = true;
-  clearInterval(state.timerId);
+  if (role === "student") {
+    window.location.href = "student.html";
+  }
+}
 
-  const current = QUESTIONS[state.index];
-  const buttons = Array.from(answerList.querySelectorAll("button"));
+async function loadBlocks() {
+  signupBlockSelect.innerHTML = '<option value="">Loading blocks...</option>';
+  const response = await fetch(`${API_BASE}/auth/blocks`, { credentials: "include" });
+  if (!response.ok) {
+    signupBlockSelect.innerHTML = '<option value="">No blocks available</option>';
+    setMessage("Unable to load blocks. Ask your teacher to create classes first.", true);
+    return;
+  }
 
-  buttons.forEach((btn) => {
-    const isCorrect = btn.textContent === current.answer;
-    if (isCorrect) {
-      btn.classList.add("correct");
-    }
+  const data = await response.json();
+  const classes = data.classes || [];
 
-    if (selectedBtn && btn === selectedBtn && !isCorrect) {
-      btn.classList.add("incorrect");
-    }
+  if (!classes.length) {
+    signupBlockSelect.innerHTML = '<option value="">No blocks available</option>';
+    setMessage("No blocks are available yet. Ask your teacher to create classes first.", true);
+    return;
+  }
 
-    btn.disabled = true;
+  signupBlockSelect.innerHTML = '<option value="">Select a block</option>';
+  classes.forEach((classItem) => {
+    const option = document.createElement("option");
+    option.value = String(classItem.blockNumber);
+    option.textContent = `${classItem.name} (Block ${classItem.blockNumber})`;
+    signupBlockSelect.appendChild(option);
+  });
+}
+
+loginForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  setMessage("Logging in...");
+
+  const response = await fetch(`${API_BASE}/auth/login`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({
+      username: loginUsernameInput.value,
+      password: loginPasswordInput.value,
+    }),
   });
 
-  if (selectedBtn && selectedBtn.textContent === current.answer) {
-    state.score += 1;
-  } else if (selectedBtn) {
-    state.timeLeft = Math.max(0, state.timeLeft - 4);
-    timerText.textContent = `${state.timeLeft}s`;
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    setMessage(payload.error || "Unable to log in.", true);
+    return;
   }
 
-  setTimeout(nextQuestion, 650);
-}
+  setMessage("Logged in. Redirecting...");
+  redirectForRole(payload.user?.role);
+});
 
-function nextQuestion() {
-  state.index += 1;
+signupForm.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  setMessage("Creating account...");
 
-  if (state.index >= QUESTIONS.length) {
-    return finishQuiz();
+  const response = await fetch(`${API_BASE}/auth/signup`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    credentials: "include",
+    body: JSON.stringify({
+      username: signupUsernameInput.value,
+      password: signupPasswordInput.value,
+      blockNumber: Number(signupBlockSelect.value),
+    }),
+  });
+
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) {
+    setMessage(payload.error || "Unable to create account.", true);
+    return;
   }
 
-  renderQuestion();
+  setMessage("Account created. Redirecting...");
+  redirectForRole(payload.user?.role);
+});
+
+async function bootstrapAuthPage() {
+  try {
+    const meResponse = await fetch(`${API_BASE}/auth/me`, { credentials: "include" });
+    if (meResponse.ok) {
+      const data = await meResponse.json();
+      redirectForRole(data.user?.role);
+      return;
+    }
+  } catch {
+    // If API is unavailable, fall through and show auth forms.
+  }
+
+  await loadBlocks();
 }
 
-function finishQuiz() {
-  clearInterval(state.timerId);
-  scoreText.textContent = `You scored ${state.score} out of ${QUESTIONS.length}.`;
-  showPanel(resultScreen);
-}
-
-function startQuiz() {
-  resetState();
-  showPanel(questionScreen);
-  renderQuestion();
-}
-
-startBtn.addEventListener("click", startQuiz);
-restartBtn.addEventListener("click", startQuiz);
+bootstrapAuthPage();

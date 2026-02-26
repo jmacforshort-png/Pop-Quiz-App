@@ -15,34 +15,48 @@
   <body>
     <main class="app">
       <header class="hero">
-        <p class="kicker">New Project</p>
+        <p class="kicker">Pop Quiz Portal</p>
         <h1>Pop Quiz</h1>
-        <p class="subtitle">Fast rounds. No fluff. See how many you can get right.</p>
-        <p class="subtitle"><a href="admin.html">Open Admin Class Manager</a></p>
+        <p class="subtitle">Sign in to your account or create a student account by block.</p>
       </header>
 
-      <section id="quiz-card" class="card">
-        <div id="start-screen" class="panel active">
-          <h2>Ready to play?</h2>
-          <p>You have 15 seconds per question. Wrong answers cost time.</p>
-          <button id="start-btn" class="btn primary">Start Quiz</button>
+      <section class="card auth-layout">
+        <div class="auth-card">
+          <h2>Log In</h2>
+          <form id="login-form" class="auth-form">
+            <label>
+              Username
+              <input id="login-username" type="text" autocomplete="username" required />
+            </label>
+            <label>
+              Password
+              <input id="login-password" type="password" autocomplete="current-password" required />
+            </label>
+            <button class="btn primary" type="submit">Log In</button>
+          </form>
         </div>
 
-        <div id="question-screen" class="panel" aria-live="polite">
-          <div class="status-row">
-            <span id="question-count">Question 1 / 5</span>
-            <span id="timer">15s</span>
-          </div>
-          <h2 id="question-text">Question text</h2>
-          <div id="answer-list" class="answers"></div>
-        </div>
-
-        <div id="result-screen" class="panel">
-          <h2>Round Complete</h2>
-          <p id="score-text">You scored 0 out of 5.</p>
-          <button id="restart-btn" class="btn secondary">Play Again</button>
+        <div class="auth-card">
+          <h2>Create Student Account</h2>
+          <form id="signup-form" class="auth-form">
+            <label>
+              Username
+              <input id="signup-username" type="text" autocomplete="username" required />
+            </label>
+            <label>
+              Password (6+ characters)
+              <input id="signup-password" type="password" autocomplete="new-password" required />
+            </label>
+            <label>
+              Block Number
+              <select id="signup-block" required></select>
+            </label>
+            <button class="btn secondary" type="submit">Create Account</button>
+          </form>
         </div>
       </section>
+
+      <p id="auth-message" class="subtitle" aria-live="polite"></p>
     </main>
 
     <script src="app.js"></script>
