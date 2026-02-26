@@ -46,5 +46,12 @@
     "express": "^5.1.0",
     "jsonwebtoken": "^9.0.2",
     "zod": "^4.1.11"
+  },
+  "overrides": {
+    "@prisma/config": {
+      "c12": {
+        "magicast": "0.3.5"
+      }
+    }
   }
 }
