@@ -5,6 +5,8 @@ describe("student dashboard ui", () => {
     const html = await fs.readFile("student.html", "utf8");
 
     expect(html).toContain('id="student-list"');
+    expect(html).toContain('id="student-upcoming-list"');
+    expect(html).toContain('id="student-closed-list"');
     expect(html).toContain('id="student-results-list"');
     expect(html).toContain('id="student-logout"');
     expect(html).toContain('src="student-dashboard.js"');

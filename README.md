@@ -37,6 +37,9 @@ Admin class routes (admin role + session required):
 - `GET /admin/audit-logs` (optional query: `limit`)
 - `POST /admin/quizzes` for fixed-format draft quiz creation
 - `GET /admin/quizzes` list admin quizzes
+- `GET /admin/templates` list saved quiz templates
+- `GET /admin/templates/:templateId` load one template payload
+- `POST /admin/templates` with `{ "quizId": "...", "title": "Optional name" }` to save template from a quiz
 - `GET /admin/reports/quiz-summary` report assigned/submitted/average score metrics (optional `blockNumber`)
 - `GET /admin/reports/operations-summary` Today/This Week aggregates with quick-publish candidates (optional `timezoneOffsetMinutes`)
 - `GET /admin/reports/gradebook` row-level gradebook (`classId`, `quizId`, `weekStart` filters)
@@ -47,6 +50,7 @@ Admin class routes (admin role + session required):
 - `POST /admin/quizzes/:quizId/publish` publish a draft quiz
 - `POST /admin/quizzes/:quizId/publish-results` release student scores for a published quiz
 - `GET /student/quizzes` list currently available published quizzes for the logged-in student
+- `GET /student/quiz-feed` list assigned quizzes with `available|upcoming|closed|submitted` status for dashboard messaging
 - `GET /student/results` list submitted attempts with pending/published result visibility
 - `GET /student/quizzes/:quizId` fetch student-safe quiz payload (no answer key fields)
 - student quiz page submits answers to `POST /student/quizzes/:quizId/submit`
@@ -61,11 +65,14 @@ Admin class routes (admin role + session required):
 - `admin-gradebook.html` provides sortable gradebook rows with CSV export
 - quiz builder includes Today/This Week summary metrics and quick Publish Results actions
 - quiz lifecycle table supports one-click quiz duplication into a draft
+- quiz builder supports saving templates and starting new quizzes from templates
 - quiz builder includes a lifecycle list to publish quizzes and publish results
 - admin reporting section supports block filter with assigned/submitted/average metrics
 - quiz builder supports per-block schedule presets plus start/end date-time
 - students can only submit each quiz once; submitted quizzes are removed from available list
 - assignment schedules are stored as UTC with explicit offsets; student views render times in local timezone
+- student dashboard clearly separates ready, upcoming, and closed quizzes
+- student quiz page shows window countdown and timestamped submission confirmation
 
 ## Database Setup
 

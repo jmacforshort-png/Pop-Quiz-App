@@ -116,6 +116,76 @@ function createStudentQuizService({ prisma }) {
     return quiz;
   }
 
+  async function listQuizFeed({ classId, studentId, now = new Date() }) {
+    if (!classId || !studentId) {
+      throw new StudentQuizServiceError(400, "Student identity is required.");
+    }
+
+    const quizzes = await prisma.quiz.findMany({
+      where: {
+        status: "published",
+        assignments: {
+          some: {
+            classId,
+          },
+        },
+      },
+      orderBy: [{ publishedAt: "desc" }, { createdAt: "desc" }],
+      select: {
+        id: true,
+        title: true,
+        description: true,
+        assignments: {
+          where: {
+            classId,
+          },
+          select: {
+            visibleFromUtc: true,
+            visibleUntilUtc: true,
+            class: {
+              select: {
+                name: true,
+                blockNumber: true,
+              },
+            },
+          },
+          take: 1,
+        },
+        attempts: {
+          where: {
+            studentId,
+          },
+          select: {
+            id: true,
+          },
+          take: 1,
+        },
+      },
+    });
+
+    return quizzes.map((quiz) => {
+      const assignment = quiz.assignments[0];
+      const hasAttempt = quiz.attempts.length > 0;
+      let availabilityStatus = "available";
+      if (hasAttempt) {
+        availabilityStatus = "submitted";
+      } else if (assignment && new Date(now) < new Date(assignment.visibleFromUtc)) {
+        availabilityStatus = "upcoming";
+      } else if (assignment && new Date(now) >= new Date(assignment.visibleUntilUtc)) {
+        availabilityStatus = "closed";
+      }
+
+      return {
+        id: quiz.id,
+        title: quiz.title,
+        description: quiz.description,
+        assignment: assignment || null,
+        availabilityStatus,
+        hasSubmitted: hasAttempt,
+      };
+    });
+  }
+
   async function submitQuizAttempt({ classId, quizId, studentId, answers, now = new Date() }) {
     if (!classId || !studentId) {
       throw new StudentQuizServiceError(400, "Student identity is required.");
@@ -282,6 +352,7 @@ function createStudentQuizService({ prisma }) {
 
   return {
     getQuizForStudent,
+    listQuizFeed,
     listStudentResults,
     listAvailableQuizzes,
     submitQuizAttempt,

@@ -136,6 +136,27 @@ function createAuthApp({ prisma, jwtSecret }) {
   });
 
   app.get(
+    "/student/quiz-feed",
+    requireAuth(jwtSecret),
+    requireRole("student"),
+    async (req, res) => {
+      try {
+        const feed = await studentQuizService.listQuizFeed({
+          classId: req.auth.classId,
+          studentId: req.auth.sub,
+        });
+        return res.status(200).json({ feed });
+      } catch (error) {
+        if (error instanceof StudentQuizServiceError) {
+          return res.status(error.statusCode).json({ error: error.message });
+        }
+
+        return res.status(500).json({ error: "Unable to load quiz feed." });
+      }
+    }
+  );
+
+  app.get(
     "/student/quizzes/:quizId",
     requireAuth(jwtSecret),
     requireRole("student"),
@@ -345,6 +366,50 @@ function createAuthApp({ prisma, jwtSecret }) {
   app.get("/admin/quizzes", requireAuth(jwtSecret), requireRole("admin"), async (req, res) => {
     const quizzes = await quizService.listQuizzes(req.auth.sub);
     return res.status(200).json({ quizzes });
+  });
+
+  app.get("/admin/templates", requireAuth(jwtSecret), requireRole("admin"), async (req, res) => {
+    const templates = await quizService.listTemplates(req.auth.sub);
+    return res.status(200).json({ templates });
+  });
+
+  app.get(
+    "/admin/templates/:templateId",
+    requireAuth(jwtSecret),
+    requireRole("admin"),
+    async (req, res) => {
+      try {
+        const template = await quizService.getTemplateById(req.auth.sub, req.params.templateId);
+        return res.status(200).json({ template });
+      } catch (error) {
+        if (error instanceof QuizServiceError) {
+          return res.status(error.statusCode).json({ error: error.message });
+        }
+
+        return res.status(500).json({ error: "Unable to load template." });
+      }
+    }
+  );
+
+  app.post("/admin/templates", requireAuth(jwtSecret), requireRole("admin"), async (req, res) => {
+    try {
+      const template = await quizService.saveQuizAsTemplate(req.auth.sub, req.body.quizId, {
+        title: req.body.title,
+      });
+      await auditService.logAction({
+        actorUserId: req.auth.sub,
+        action: AUDIT_ACTIONS.QUIZ_TEMPLATE_SAVED,
+        targetType: "template",
+        targetId: template.id,
+      });
+      return res.status(201).json({ template });
+    } catch (error) {
+      if (error instanceof QuizServiceError) {
+        return res.status(error.statusCode).json({ error: error.message });
+      }
+
+      return res.status(500).json({ error: "Unable to save template." });
+    }
   });
 
   app.get(

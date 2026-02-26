@@ -4,6 +4,10 @@ const refreshButton = document.getElementById("refresh-student");
 const messageText = document.getElementById("student-message");
 const emptyState = document.getElementById("student-empty");
 const listContainer = document.getElementById("student-list");
+const upcomingEmptyState = document.getElementById("student-upcoming-empty");
+const upcomingListContainer = document.getElementById("student-upcoming-list");
+const closedEmptyState = document.getElementById("student-closed-empty");
+const closedListContainer = document.getElementById("student-closed-list");
 const resultsEmptyState = document.getElementById("student-results-empty");
 const resultsListContainer = document.getElementById("student-results-list");
 const logoutButton = document.getElementById("student-logout");
@@ -33,17 +37,16 @@ function formatDate(value) {
   }
 }
 
-function renderQuizzes(quizzes) {
-  listContainer.innerHTML = "";
-
+function renderQuizItems(container, emptyNode, quizzes, status) {
+  container.innerHTML = "";
   if (!quizzes.length) {
-    listContainer.hidden = true;
-    emptyState.hidden = false;
+    container.hidden = true;
+    emptyNode.hidden = false;
     return;
   }
 
-  listContainer.hidden = false;
-  emptyState.hidden = true;
+  container.hidden = false;
+  emptyNode.hidden = true;
 
   quizzes.forEach((quiz) => {
     const item = document.createElement("article");
@@ -58,18 +61,36 @@ function renderQuizzes(quizzes) {
     const assignment = quiz.assignments?.[0];
     const timing = document.createElement("p");
     timing.className = "subtitle";
-    if (assignment) {
-      timing.textContent = `Block ${assignment.class?.blockNumber}: ${formatDate(assignment.visibleFromUtc)} - ${formatDate(assignment.visibleUntilUtc)}`;
+    if (assignment?.class) {
+      if (status === "available") {
+        timing.textContent = `Available now for Block ${assignment.class.blockNumber} until ${formatDate(assignment.visibleUntilUtc)}.`;
+      } else if (status === "upcoming") {
+        timing.textContent = `Opens ${formatDate(assignment.visibleFromUtc)} for Block ${assignment.class.blockNumber}.`;
+      } else {
+        timing.textContent = `Closed ${formatDate(assignment.visibleUntilUtc)} for Block ${assignment.class.blockNumber}.`;
+      }
     }
 
-    const startLink = document.createElement("a");
-    startLink.className = "btn primary";
-    startLink.href = `student-quiz.html?quizId=${encodeURIComponent(quiz.id)}`;
-    startLink.textContent = "Start Quiz";
-
-    item.append(heading, description, timing, startLink);
-    listContainer.appendChild(item);
+    if (status === "available") {
+      const startLink = document.createElement("a");
+      startLink.className = "btn primary";
+      startLink.href = `student-quiz.html?quizId=${encodeURIComponent(quiz.id)}`;
+      startLink.textContent = "Start Quiz";
+      item.append(heading, description, timing, startLink);
+    } else {
+      item.append(heading, description, timing);
+    }
+    container.appendChild(item);
   });
+}
+
+function renderQuizzes(feed) {
+  const available = feed.filter((quiz) => quiz.availabilityStatus === "available");
+  const upcoming = feed.filter((quiz) => quiz.availabilityStatus === "upcoming");
+  const closed = feed.filter((quiz) => quiz.availabilityStatus === "closed");
+  renderQuizItems(listContainer, emptyState, available, "available");
+  renderQuizItems(upcomingListContainer, upcomingEmptyState, upcoming, "upcoming");
+  renderQuizItems(closedListContainer, closedEmptyState, closed, "closed");
 }
 
 function renderResults(results) {
@@ -98,9 +119,9 @@ function renderResults(results) {
     const status = document.createElement("p");
     status.className = "subtitle";
     if (result.resultStatus === "published" && result.score !== null) {
-      status.textContent = `Score: ${result.score}/${result.maxScore}`;
+      status.textContent = `Published score: ${result.score}/${result.maxScore}`;
     } else {
-      status.textContent = "Result: Pending teacher release";
+      status.textContent = "Pending result: Submitted, waiting for teacher to publish.";
     }
 
     item.append(heading, submitted, status);
@@ -111,8 +132,8 @@ function renderResults(results) {
 async function loadStudentQuizzes() {
   setMessage("Loading quizzes...");
 
-  const [quizzesResponse, resultsResponse] = await Promise.all([
-    fetch(`${API_BASE}/student/quizzes`, {
+  const [feedResponse, resultsResponse] = await Promise.all([
+    fetch(`${API_BASE}/student/quiz-feed`, {
       credentials: "include",
     }),
     fetch(`${API_BASE}/student/results`, {
@@ -120,16 +141,16 @@ async function loadStudentQuizzes() {
     }),
   ]);
 
-  if (!quizzesResponse.ok || !resultsResponse.ok) {
+  if (!feedResponse.ok || !resultsResponse.ok) {
     setMessage("Unable to load quizzes. Make sure you are logged in as a student.", true);
     renderQuizzes([]);
     renderResults([]);
     return;
   }
 
-  const quizzesPayload = await quizzesResponse.json();
+  const feedPayload = await feedResponse.json();
   const resultsPayload = await resultsResponse.json();
-  renderQuizzes(quizzesPayload.quizzes || []);
+  renderQuizzes(feedPayload.feed || []);
   renderResults(resultsPayload.results || []);
   setMessage("");
 }

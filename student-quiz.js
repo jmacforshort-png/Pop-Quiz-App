@@ -8,13 +8,64 @@ const descriptionText = document.getElementById("student-quiz-description");
 const questionWrap = document.getElementById("student-quiz-questions");
 const submitButton = document.getElementById("submit-student-quiz");
 const messageText = document.getElementById("student-quiz-message");
+const windowMessage = document.getElementById("student-window-message");
+const confirmationWrap = document.getElementById("submission-confirmation");
+const confirmationText = document.getElementById("submission-confirmation-text");
 const logoutButton = document.getElementById("student-logout");
 
 let loadedQuiz = null;
+let quizWindow = null;
+let countdownTimerId = null;
 
 function setMessage(text, isError = false) {
   messageText.textContent = text;
   messageText.style.color = isError ? "var(--bad)" : "var(--muted)";
+}
+
+function formatDate(value) {
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) {
+    return "Unknown time";
+  }
+  return date.toLocaleString();
+}
+
+function formatTimeRemaining(targetDate) {
+  const remainingMs = targetDate.getTime() - Date.now();
+  if (remainingMs <= 0) {
+    return "0m 0s";
+  }
+  const totalSeconds = Math.floor(remainingMs / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes}m ${seconds}s`;
+}
+
+function updateWindowMessage() {
+  if (!quizWindow?.visibleUntilUtc) {
+    windowMessage.textContent = "";
+    return;
+  }
+
+  const until = new Date(quizWindow.visibleUntilUtc);
+  const from = new Date(quizWindow.visibleFromUtc);
+  if (Date.now() >= until.getTime()) {
+    windowMessage.textContent = `This quiz window is closed (ended ${formatDate(until)}).`;
+    submitButton.disabled = true;
+    return;
+  }
+
+  windowMessage.textContent = `Quiz open from ${formatDate(from)} to ${formatDate(until)}. Time remaining: ${formatTimeRemaining(until)}.`;
+}
+
+function showSubmissionConfirmation(attempt) {
+  const submittedAt = formatDate(attempt.submittedAt);
+  if (attempt.resultStatus === "published" && attempt.score !== null) {
+    confirmationText.textContent = `Submitted ${submittedAt}. Published score: ${attempt.score}/${attempt.maxScore}.`;
+  } else {
+    confirmationText.textContent = `Submitted ${submittedAt}. Status: pending result (teacher has not published scores yet).`;
+  }
+  confirmationWrap.hidden = false;
 }
 
 function renderQuiz(quiz) {
@@ -100,6 +151,22 @@ async function loadQuiz() {
 
   const data = await response.json();
   renderQuiz(data.quiz);
+  const feedResponse = await fetch(`${API_BASE}/student/quiz-feed`, { credentials: "include" });
+  if (feedResponse.ok) {
+    const feedData = await feedResponse.json();
+    const feedQuiz = (feedData.feed || []).find((item) => item.id === quizId);
+    if (feedQuiz?.assignment) {
+      quizWindow = {
+        visibleFromUtc: feedQuiz.assignment.visibleFromUtc,
+        visibleUntilUtc: feedQuiz.assignment.visibleUntilUtc,
+      };
+      updateWindowMessage();
+      if (countdownTimerId) {
+        window.clearInterval(countdownTimerId);
+      }
+      countdownTimerId = window.setInterval(updateWindowMessage, 1000);
+    }
+  }
   submitButton.disabled = false;
   setMessage("");
 }
@@ -129,12 +196,14 @@ submitButton.addEventListener("click", async () => {
   }
 
   const data = await response.json();
+  showSubmissionConfirmation(data.attempt);
+  submitButton.disabled = true;
   if (data.attempt.resultStatus === "published" && data.attempt.score !== null) {
-    setMessage(`Quiz submitted. Score saved: ${data.attempt.score}/${data.attempt.maxScore}.`);
+    setMessage(`Quiz submitted. Published score: ${data.attempt.score}/${data.attempt.maxScore}.`);
     return;
   }
 
-  setMessage("Quiz submitted. Results are hidden until your teacher publishes them.");
+  setMessage("Quiz submitted. Result is pending until your teacher publishes scores.");
 });
 
 logoutButton?.addEventListener("click", async () => {
@@ -143,6 +212,12 @@ logoutButton?.addEventListener("click", async () => {
     credentials: "include",
   });
   window.location.href = "index.html";
+});
+
+window.addEventListener("beforeunload", () => {
+  if (countdownTimerId) {
+    window.clearInterval(countdownTimerId);
+  }
 });
 
 loadQuiz();
