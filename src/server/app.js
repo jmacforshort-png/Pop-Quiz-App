@@ -204,6 +204,7 @@ function createAuthApp({ prisma, jwtSecret }) {
           quizId: req.params.quizId,
           studentId: req.auth.sub,
           answers: req.body.answers,
+          startedAt: req.body.startedAt,
         });
         return res.status(201).json({ attempt });
       } catch (error) {
@@ -509,6 +510,13 @@ function createAuthApp({ prisma, jwtSecret }) {
               })
               .join(",")
           );
+        });
+
+        await auditService.logAction({
+          actorUserId: req.auth.sub,
+          action: AUDIT_ACTIONS.GRADEBOOK_EXPORTED,
+          targetType: "report",
+          targetId: "gradebook",
         });
 
         res.setHeader("Content-Type", "text/csv; charset=utf-8");

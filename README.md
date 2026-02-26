@@ -73,6 +73,8 @@ Admin class routes (admin role + session required):
 - assignment schedules are stored as UTC with explicit offsets; student views render times in local timezone
 - student dashboard clearly separates ready, upcoming, and closed quizzes
 - student quiz page shows window countdown and timestamped submission confirmation
+- attempts now persist `startedAt` (nullable) and `late` (boolean) for reporting reliability
+- gradebook export actions are included in admin audit logs
 
 ## Database Setup
 
@@ -81,6 +83,9 @@ Admin class routes (admin role + session required):
 3. Generate Prisma client: `npm run db:generate`
 4. Run local migrations: `npm run db:migrate`
 5. For deployment migrations: `npm run db:migrate:deploy`
+6. M4 reliability migration backfills existing attempts:
+   - sets `startedAt = submittedAt` where missing
+   - computes `late` from assignment window close times
 
 ## Admin Bootstrap
 

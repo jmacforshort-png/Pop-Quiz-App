@@ -41,6 +41,8 @@ function createSubmissionPrismaMock() {
       findFirst: async () => null,
       create: async ({ data }) => ({
         id: "attempt_1",
+        startedAt: data.startedAt ?? null,
+        late: data.late ?? false,
         score: data.score,
         maxScore: data.maxScore,
         submittedAt: data.submittedAt,
@@ -69,6 +71,8 @@ describe("student quiz submission", () => {
     expect(attempt.score).toBeNull();
     expect(attempt.maxScore).toBe(2);
     expect(attempt.resultStatus).toBe("hidden");
+    expect(attempt.late).toBe(false);
+    expect(attempt.startedAt).toBeNull();
   });
 
   it("rejects incomplete answer sets", async () => {
@@ -142,6 +146,24 @@ describe("student quiz submission", () => {
         classId: "class_1",
         quizId: "quiz_1",
         studentId: "student_1",
+        answers: [
+          { questionId: "q1", selectedLabel: "A" },
+          { questionId: "q2", selectedLabel: "B" },
+        ],
+      })
+    ).rejects.toBeInstanceOf(StudentQuizServiceError);
+  });
+
+  it("rejects invalid startedAt timestamp", async () => {
+    const prisma = createSubmissionPrismaMock();
+    const service = createStudentQuizService({ prisma });
+
+    await expect(
+      service.submitQuizAttempt({
+        classId: "class_1",
+        quizId: "quiz_1",
+        studentId: "student_1",
+        startedAt: "not-a-date",
         answers: [
           { questionId: "q1", selectedLabel: "A" },
           { questionId: "q2", selectedLabel: "B" },
