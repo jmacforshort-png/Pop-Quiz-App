@@ -40,6 +40,34 @@
 
         <section class="admin-section">
           <div class="section-head">
+            <h2>Today / This Week</h2>
+            <button id="refresh-summary" class="btn secondary" type="button">
+              Refresh Summary
+            </button>
+          </div>
+          <div class="summary-grid">
+            <article class="summary-card">
+              <h3>Today</h3>
+              <p id="summary-today-active" class="summary-value">0 active quizzes</p>
+              <p id="summary-today-progress" class="subtitle">0 submitted / 0 assigned</p>
+            </article>
+            <article class="summary-card">
+              <h3>This Week</h3>
+              <p id="summary-week-active" class="summary-value">0 active quizzes</p>
+              <p id="summary-week-progress" class="subtitle">0 submitted / 0 assigned</p>
+            </article>
+          </div>
+          <div>
+            <h3>Quick Publish Results</h3>
+            <p id="summary-publish-empty" class="empty-state">
+              No quizzes ready for result release.
+            </p>
+            <div id="summary-publish-actions" class="row-actions" hidden></div>
+          </div>
+        </section>
+
+        <section class="admin-section">
+          <div class="section-head">
             <h2>Quiz Lifecycle</h2>
           </div>
           <div id="quiz-list-empty" class="empty-state">
@@ -100,7 +128,9 @@
 
             <fieldset class="assignment-fieldset">
               <legend>Assign to Blocks</legend>
-              <p class="subtitle">Select one or more blocks for this quiz.</p>
+              <p class="subtitle">
+                Select one or more blocks for this quiz. Use schedule presets to fill dates quickly.
+              </p>
               <div id="assignment-list" class="assignment-list"></div>
             </fieldset>
 

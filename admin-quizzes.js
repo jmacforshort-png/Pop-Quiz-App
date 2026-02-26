@@ -13,6 +13,13 @@ const publishQuizButton = document.getElementById("publish-quiz");
 const quizListEmpty = document.getElementById("quiz-list-empty");
 const quizListTable = document.getElementById("quiz-list-table");
 const quizListBody = document.getElementById("quiz-list-body");
+const refreshSummaryButton = document.getElementById("refresh-summary");
+const summaryTodayActive = document.getElementById("summary-today-active");
+const summaryTodayProgress = document.getElementById("summary-today-progress");
+const summaryWeekActive = document.getElementById("summary-week-active");
+const summaryWeekProgress = document.getElementById("summary-week-progress");
+const summaryPublishEmpty = document.getElementById("summary-publish-empty");
+const summaryPublishActions = document.getElementById("summary-publish-actions");
 const reportBlockFilter = document.getElementById("report-block-filter");
 const refreshReportButton = document.getElementById("refresh-report");
 const reportEmpty = document.getElementById("report-empty");
@@ -22,6 +29,44 @@ const logoutButton = document.getElementById("admin-logout");
 
 const CHOICE_LABELS = ["A", "B", "C", "D"];
 const QUESTION_COUNT = 5;
+const SCHEDULE_PRESETS = {
+  custom: {
+    label: "Custom",
+    resolve: () => null,
+  },
+  blockPeriod: {
+    label: "This block period (now + 50 min)",
+    resolve: () => {
+      const from = new Date();
+      from.setSeconds(0, 0);
+      const until = new Date(from.getTime() + 50 * 60000);
+      return { from, until };
+    },
+  },
+  todaySchool: {
+    label: "Today 8:00 - 15:00",
+    resolve: () => {
+      const now = new Date();
+      const from = new Date(now);
+      from.setHours(8, 0, 0, 0);
+      const until = new Date(now);
+      until.setHours(15, 0, 0, 0);
+      return { from, until };
+    },
+  },
+  tomorrowSchool: {
+    label: "Tomorrow 8:00 - 15:00",
+    resolve: () => {
+      const now = new Date();
+      const from = new Date(now);
+      from.setDate(from.getDate() + 1);
+      from.setHours(8, 0, 0, 0);
+      const until = new Date(from);
+      until.setHours(15, 0, 0, 0);
+      return { from, until };
+    },
+  },
+};
 
 let editingQuizId = null;
 let cachedQuizzes = [];
@@ -39,6 +84,15 @@ function setMessage(text, isError = false) {
 function toLocalDatetimeValue(isoValue) {
   const date = new Date(isoValue);
   if (Number.isNaN(date.getTime())) {
+    return "";
+  }
+
+  const offsetDate = new Date(date.getTime() - date.getTimezoneOffset() * 60000);
+  return offsetDate.toISOString().slice(0, 16);
+}
+
+function toLocalDatetimeValueFromDate(date) {
+  if (!date || Number.isNaN(date.getTime())) {
     return "";
   }
 
@@ -139,7 +193,22 @@ function renderAssignments(classes) {
     untilInput.dataset.classId = classItem.id;
     untilLabel.appendChild(untilInput);
 
-    row.append(checkbox, text, fromLabel, untilLabel);
+    const presetLabel = document.createElement("label");
+    presetLabel.textContent = "Schedule Preset";
+
+    const presetSelect = document.createElement("select");
+    presetSelect.dataset.role = "schedulePreset";
+    presetSelect.dataset.classId = classItem.id;
+
+    Object.entries(SCHEDULE_PRESETS).forEach(([value, preset]) => {
+      const option = document.createElement("option");
+      option.value = value;
+      option.textContent = preset.label;
+      presetSelect.appendChild(option);
+    });
+    presetLabel.appendChild(presetSelect);
+
+    row.append(checkbox, text, presetLabel, fromLabel, untilLabel);
     assignmentList.appendChild(row);
   });
 }
@@ -226,6 +295,74 @@ async function loadReport() {
   renderReportRows(data.report || []);
 }
 
+function renderSummary(summary) {
+  const today = summary?.today || {
+    activeQuizCount: 0,
+    assignedCount: 0,
+    submittedCount: 0,
+    publishable: [],
+  };
+  const thisWeek = summary?.thisWeek || {
+    activeQuizCount: 0,
+    assignedCount: 0,
+    submittedCount: 0,
+    publishable: [],
+  };
+
+  summaryTodayActive.textContent = `${today.activeQuizCount} active quizzes`;
+  summaryTodayProgress.textContent = `${today.submittedCount} submitted / ${today.assignedCount} assigned`;
+  summaryWeekActive.textContent = `${thisWeek.activeQuizCount} active quizzes`;
+  summaryWeekProgress.textContent = `${thisWeek.submittedCount} submitted / ${thisWeek.assignedCount} assigned`;
+
+  const publishableByQuizId = new Map();
+  [...(today.publishable || []), ...(thisWeek.publishable || [])].forEach((item) => {
+    if (!publishableByQuizId.has(item.quizId)) {
+      publishableByQuizId.set(item.quizId, item);
+    }
+  });
+  const publishable = Array.from(publishableByQuizId.values());
+
+  summaryPublishActions.innerHTML = "";
+  if (!publishable.length) {
+    summaryPublishActions.hidden = true;
+    summaryPublishEmpty.hidden = false;
+    return;
+  }
+
+  summaryPublishActions.hidden = false;
+  summaryPublishEmpty.hidden = true;
+  publishable.forEach((item) => {
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "action-btn";
+    button.dataset.action = "publishResultsSummary";
+    button.dataset.quizId = item.quizId;
+    button.textContent = `Publish: ${item.title} (${item.submittedCount}/${item.assignedCount})`;
+    summaryPublishActions.appendChild(button);
+  });
+}
+
+async function loadSummary() {
+  const timezoneOffsetMinutes = new Date().getTimezoneOffset();
+  const response = await fetch(
+    `${API_BASE}/admin/reports/operations-summary?timezoneOffsetMinutes=${encodeURIComponent(
+      timezoneOffsetMinutes
+    )}`,
+    {
+      credentials: "include",
+    }
+  );
+
+  if (!response.ok) {
+    setMessage("Unable to load weekly summary.", true);
+    renderSummary(null);
+    return;
+  }
+
+  const data = await response.json();
+  renderSummary(data.summary);
+}
+
 function renderQuizList(quizzes) {
   quizListBody.innerHTML = "";
 
@@ -254,6 +391,14 @@ function renderQuizList(quizzes) {
     blocksCell.textContent = String(quiz.assignments?.length || 0);
 
     const actionsCell = document.createElement("td");
+
+    const duplicateButton = document.createElement("button");
+    duplicateButton.type = "button";
+    duplicateButton.className = "action-btn";
+    duplicateButton.dataset.action = "duplicate";
+    duplicateButton.dataset.quizId = quiz.id;
+    duplicateButton.textContent = "Duplicate";
+    actionsCell.appendChild(duplicateButton);
 
     if (quiz.status === "draft") {
       const editButton = document.createElement("button");
@@ -372,6 +517,9 @@ async function loadQuizIntoForm(quizId) {
   document.querySelectorAll('[data-role="visibleUntil"]').forEach((input) => {
     input.value = "";
   });
+  document.querySelectorAll('[data-role="schedulePreset"]').forEach((input) => {
+    input.value = "custom";
+  });
 
   quiz.assignments.forEach((assignment) => {
     const checkbox = document.querySelector(
@@ -437,6 +585,40 @@ function buildQuizPayload() {
     }),
   };
 }
+
+function applySchedulePreset(classId, presetKey) {
+  const preset = SCHEDULE_PRESETS[presetKey];
+  if (!preset) {
+    return;
+  }
+
+  const schedule = preset.resolve();
+  if (!schedule) {
+    return;
+  }
+
+  const fromInput = document.querySelector(`[data-role="visibleFrom"][data-class-id="${classId}"]`);
+  const untilInput = document.querySelector(
+    `[data-role="visibleUntil"][data-class-id="${classId}"]`
+  );
+  const assignmentInput = document.querySelector(`[data-role="assignment"][value="${classId}"]`);
+  if (!fromInput || !untilInput) {
+    return;
+  }
+
+  fromInput.value = toLocalDatetimeValueFromDate(schedule.from);
+  untilInput.value = toLocalDatetimeValueFromDate(schedule.until);
+  if (assignmentInput) {
+    assignmentInput.checked = true;
+  }
+}
+
+assignmentList.addEventListener("change", (event) => {
+  const presetSelect = event.target.closest('select[data-role="schedulePreset"]');
+  if (presetSelect) {
+    applySchedulePreset(presetSelect.dataset.classId, presetSelect.value);
+  }
+});
 
 quizForm.addEventListener("submit", async (event) => {
   event.preventDefault();
@@ -507,6 +689,7 @@ draftSelect.addEventListener("change", async () => {
 refreshQuizzesButton.addEventListener("click", async () => {
   await loadDrafts();
   await loadReport();
+  await loadSummary();
   setMessage("Draft list refreshed.");
 });
 
@@ -532,6 +715,7 @@ publishQuizButton.addEventListener("click", async () => {
   }
 
   await loadDrafts();
+  await loadSummary();
   resetQuizForm();
   setMessage("Quiz published.");
 });
@@ -554,6 +738,26 @@ quizListBody.addEventListener("click", async (event) => {
     return;
   }
 
+  if (action === "duplicate") {
+    const response = await fetch(`${API_BASE}/admin/quizzes/${quizId}/duplicate`, {
+      method: "POST",
+      credentials: "include",
+    });
+    if (!response.ok) {
+      const errorPayload = await response.json().catch(() => ({}));
+      setMessage(errorPayload.error || "Unable to duplicate quiz.", true);
+      return;
+    }
+
+    const data = await response.json();
+    await loadDrafts();
+    await loadSummary();
+    draftSelect.value = data.quiz.id;
+    await loadQuizIntoForm(data.quiz.id);
+    setMessage("Quiz duplicated into a new draft.");
+    return;
+  }
+
   if (action === "publishQuiz") {
     const response = await fetch(`${API_BASE}/admin/quizzes/${quizId}/publish`, {
       method: "POST",
@@ -567,6 +771,7 @@ quizListBody.addEventListener("click", async (event) => {
 
     await loadDrafts();
     await loadReport();
+    await loadSummary();
     if (editingQuizId === quizId) {
       resetQuizForm();
     }
@@ -587,6 +792,7 @@ quizListBody.addEventListener("click", async (event) => {
 
     await loadDrafts();
     await loadReport();
+    await loadSummary();
     setMessage("Results published.");
   }
 });
@@ -596,8 +802,38 @@ refreshReportButton.addEventListener("click", async () => {
   setMessage("Report refreshed.");
 });
 
+refreshSummaryButton.addEventListener("click", async () => {
+  await loadSummary();
+  setMessage("Summary refreshed.");
+});
+
 reportBlockFilter.addEventListener("change", async () => {
   await loadReport();
+});
+
+summaryPublishActions.addEventListener("click", async (event) => {
+  const publishButton = event.target.closest('button[data-action="publishResultsSummary"]');
+  if (!publishButton) {
+    return;
+  }
+
+  const response = await fetch(
+    `${API_BASE}/admin/quizzes/${publishButton.dataset.quizId}/publish-results`,
+    {
+      method: "POST",
+      credentials: "include",
+    }
+  );
+  if (!response.ok) {
+    const errorPayload = await response.json().catch(() => ({}));
+    setMessage(errorPayload.error || "Unable to publish results.", true);
+    return;
+  }
+
+  await loadDrafts();
+  await loadReport();
+  await loadSummary();
+  setMessage("Results published.");
 });
 
 logoutButton?.addEventListener("click", async () => {
@@ -610,4 +846,4 @@ logoutButton?.addEventListener("click", async () => {
 
 renderQuestionCards();
 syncActionState();
-loadAssignments().then(loadDrafts).then(loadReport);
+loadAssignments().then(loadDrafts).then(loadReport).then(loadSummary);

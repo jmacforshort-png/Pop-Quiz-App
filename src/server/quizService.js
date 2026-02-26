@@ -100,6 +100,84 @@ const QUIZ_INCLUDE = {
   },
 };
 
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+function getUtcBoundsForLocalDay(now, timezoneOffsetMinutes) {
+  const localNowMs = now.getTime() - timezoneOffsetMinutes * 60000;
+  const localDayStartMs = Math.floor(localNowMs / DAY_MS) * DAY_MS;
+  const utcStartMs = localDayStartMs + timezoneOffsetMinutes * 60000;
+  return {
+    start: new Date(utcStartMs),
+    end: new Date(utcStartMs + DAY_MS),
+    localDayStartMs,
+  };
+}
+
+function getUtcBoundsForLocalWeek(now, timezoneOffsetMinutes) {
+  const { localDayStartMs } = getUtcBoundsForLocalDay(now, timezoneOffsetMinutes);
+  const localDayOfWeek = new Date(localDayStartMs).getUTCDay();
+  const daysSinceMonday = (localDayOfWeek + 6) % 7;
+  const localWeekStartMs = localDayStartMs - daysSinceMonday * DAY_MS;
+  const utcStartMs = localWeekStartMs + timezoneOffsetMinutes * 60000;
+  return {
+    start: new Date(utcStartMs),
+    end: new Date(utcStartMs + 7 * DAY_MS),
+  };
+}
+
+function assignmentOverlapsWindow(assignment, windowStart, windowEnd) {
+  const visibleFrom = new Date(assignment.visibleFromUtc);
+  const visibleUntil = new Date(assignment.visibleUntilUtc);
+  return visibleFrom < windowEnd && visibleUntil > windowStart;
+}
+
+function buildSummaryMetrics(quizzes, windowStart, windowEnd) {
+  let activeQuizCount = 0;
+  let assignedCount = 0;
+  let submittedCount = 0;
+  const publishable = [];
+
+  quizzes.forEach((quiz) => {
+    const matchingAssignments = quiz.assignments.filter((assignment) =>
+      assignmentOverlapsWindow(assignment, windowStart, windowEnd)
+    );
+    if (!matchingAssignments.length) {
+      return;
+    }
+
+    activeQuizCount += 1;
+    const assignedStudentIds = new Set();
+    matchingAssignments.forEach((assignment) => {
+      assignment.class.students.forEach((student) => {
+        assignedStudentIds.add(student.id);
+      });
+    });
+
+    const matchingSubmittedCount = quiz.attempts.filter((attempt) =>
+      assignedStudentIds.has(attempt.studentId)
+    ).length;
+
+    assignedCount += assignedStudentIds.size;
+    submittedCount += matchingSubmittedCount;
+
+    if (quiz.resultStatus !== "published" && matchingSubmittedCount > 0) {
+      publishable.push({
+        quizId: quiz.id,
+        title: quiz.title,
+        submittedCount: matchingSubmittedCount,
+        assignedCount: assignedStudentIds.size,
+      });
+    }
+  });
+
+  return {
+    activeQuizCount,
+    assignedCount,
+    submittedCount,
+    publishable,
+  };
+}
+
 function createQuizService({ prisma }) {
   if (!prisma) {
     throw new Error("createQuizService requires prisma client.");
@@ -242,6 +320,95 @@ function createQuizService({ prisma }) {
       },
       include: QUIZ_INCLUDE,
     });
+  }
+
+  async function duplicateQuiz(adminId, quizId) {
+    const sourceQuiz = await prisma.quiz.findFirst({
+      where: { id: quizId, adminId },
+      include: QUIZ_INCLUDE,
+    });
+    if (!sourceQuiz) {
+      throw new QuizServiceError(404, "Quiz not found.");
+    }
+
+    return prisma.quiz.create({
+      data: {
+        adminId,
+        title: `${sourceQuiz.title} (Copy)`,
+        description: sourceQuiz.description,
+        status: "draft",
+        assignments: {
+          create: sourceQuiz.assignments.map((assignment) => ({
+            classId: assignment.classId,
+            visibleFromUtc: new Date(assignment.visibleFromUtc),
+            visibleUntilUtc: new Date(assignment.visibleUntilUtc),
+          })),
+        },
+        questions: {
+          create: sourceQuiz.questions.map((question) => ({
+            orderIndex: question.orderIndex,
+            prompt: question.prompt,
+            choices: {
+              create: question.choices.map((choice) => ({
+                label: choice.label,
+                text: choice.text,
+                isCorrect: choice.isCorrect,
+              })),
+            },
+          })),
+        },
+      },
+      include: QUIZ_INCLUDE,
+    });
+  }
+
+  async function getOperationsSummary(adminId, { timezoneOffsetMinutes = 0, now } = {}) {
+    const currentTime = now ? new Date(now) : new Date();
+    if (Number.isNaN(currentTime.getTime())) {
+      throw new QuizServiceError(400, "Invalid current time.");
+    }
+    if (!Number.isInteger(timezoneOffsetMinutes)) {
+      throw new QuizServiceError(400, "timezoneOffsetMinutes must be an integer.");
+    }
+
+    const today = getUtcBoundsForLocalDay(currentTime, timezoneOffsetMinutes);
+    const thisWeek = getUtcBoundsForLocalWeek(currentTime, timezoneOffsetMinutes);
+    const quizzes = await prisma.quiz.findMany({
+      where: {
+        adminId,
+        status: "published",
+      },
+      select: {
+        id: true,
+        title: true,
+        resultStatus: true,
+        assignments: {
+          select: {
+            visibleFromUtc: true,
+            visibleUntilUtc: true,
+            class: {
+              select: {
+                students: {
+                  select: {
+                    id: true,
+                  },
+                },
+              },
+            },
+          },
+        },
+        attempts: {
+          select: {
+            studentId: true,
+          },
+        },
+      },
+    });
+
+    return {
+      today: buildSummaryMetrics(quizzes, today.start, today.end),
+      thisWeek: buildSummaryMetrics(quizzes, thisWeek.start, thisWeek.end),
+    };
   }
 
   async function getQuizSummaryReport(adminId, { blockNumber } = {}) {
@@ -463,7 +630,9 @@ function createQuizService({ prisma }) {
 
   return {
     createDraftQuiz,
+    duplicateQuiz,
     getQuizById,
+    getOperationsSummary,
     listQuizzes,
     getGradebookReport,
     getQuizSummaryReport,

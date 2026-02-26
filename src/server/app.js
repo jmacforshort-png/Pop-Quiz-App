@@ -348,6 +348,40 @@ function createAuthApp({ prisma, jwtSecret }) {
   });
 
   app.get(
+    "/admin/reports/operations-summary",
+    requireAuth(jwtSecret),
+    requireRole("admin"),
+    async (req, res) => {
+      try {
+        const rawTimezoneOffset = req.query.timezoneOffsetMinutes;
+        const timezoneOffsetMinutes =
+          rawTimezoneOffset === undefined || rawTimezoneOffset === ""
+            ? 0
+            : Number.parseInt(rawTimezoneOffset, 10);
+
+        if (
+          rawTimezoneOffset !== undefined &&
+          rawTimezoneOffset !== "" &&
+          !Number.isInteger(timezoneOffsetMinutes)
+        ) {
+          return res.status(400).json({ error: "timezoneOffsetMinutes must be a valid integer." });
+        }
+
+        const summary = await quizService.getOperationsSummary(req.auth.sub, {
+          timezoneOffsetMinutes,
+        });
+        return res.status(200).json({ summary });
+      } catch (error) {
+        if (error instanceof QuizServiceError) {
+          return res.status(error.statusCode).json({ error: error.message });
+        }
+
+        return res.status(500).json({ error: "Unable to load operations summary." });
+      }
+    }
+  );
+
+  app.get(
     "/admin/reports/gradebook",
     requireAuth(jwtSecret),
     requireRole("admin"),
@@ -486,6 +520,31 @@ function createAuthApp({ prisma, jwtSecret }) {
         }
 
         return res.status(500).json({ error: "Unable to update quiz." });
+      }
+    }
+  );
+
+  app.post(
+    "/admin/quizzes/:quizId/duplicate",
+    requireAuth(jwtSecret),
+    requireRole("admin"),
+    async (req, res) => {
+      try {
+        const quiz = await quizService.duplicateQuiz(req.auth.sub, req.params.quizId);
+        await auditService.logAction({
+          actorUserId: req.auth.sub,
+          action: AUDIT_ACTIONS.QUIZ_DUPLICATED,
+          targetType: "quiz",
+          targetId: quiz.id,
+          quizId: quiz.id,
+        });
+        return res.status(201).json({ quiz });
+      } catch (error) {
+        if (error instanceof QuizServiceError) {
+          return res.status(error.statusCode).json({ error: error.message });
+        }
+
+        return res.status(500).json({ error: "Unable to duplicate quiz." });
       }
     }
   );
