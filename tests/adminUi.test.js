@@ -6,6 +6,8 @@ describe("admin classes ui", () => {
 
     expect(html).toContain('id="class-form"');
     expect(html).toContain('id="classes-table"');
+    expect(html).toContain('id="admin-logout"');
+    expect(html).toContain("admin-gradebook.html");
     expect(html).toContain('src="admin-classes.js"');
   });
 });

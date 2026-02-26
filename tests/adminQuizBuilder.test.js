@@ -13,6 +13,8 @@ describe("admin quiz builder ui", () => {
     expect(html).toContain('id="assignment-list"');
     expect(html).toContain('id="publish-quiz"');
     expect(html).toContain('id="question-cards"');
+    expect(html).toContain('id="admin-logout"');
+    expect(html).toContain("admin-gradebook.html");
     expect(html).toContain('src="admin-quizzes.js"');
   });
 });

@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Pop Quiz Gradebook</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;600;700&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+    <link rel="stylesheet" href="admin.css" />
+  </head>
+  <body>
+    <main class="app admin-app">
+      <header class="hero">
+        <p class="kicker">Teacher Panel</p>
+        <h1>Gradebook</h1>
+        <p class="subtitle">Filter, sort, and export quiz outcomes by class and week.</p>
+        <div class="row-actions">
+          <a href="admin.html">Class Manager</a>
+          <a href="admin-quizzes.html">Quiz Builder</a>
+          <button id="admin-logout" type="button" class="btn secondary">Log Out</button>
+        </div>
+      </header>
+
+      <section class="card admin-layout">
+        <section class="admin-section">
+          <div class="section-head">
+            <h2>Filters</h2>
+            <button id="gradebook-refresh" class="btn secondary" type="button">Refresh</button>
+          </div>
+          <div class="row-actions">
+            <label>
+              Class
+              <select id="gradebook-class-filter">
+                <option value="">All classes</option>
+              </select>
+            </label>
+            <label>
+              Quiz
+              <select id="gradebook-quiz-filter">
+                <option value="">All quizzes</option>
+              </select>
+            </label>
+            <label>
+              Week Start
+              <input id="gradebook-week-start" type="date" />
+            </label>
+            <button id="gradebook-export" class="btn secondary" type="button">Export CSV</button>
+          </div>
+          <p id="gradebook-message" class="form-message" aria-live="polite"></p>
+        </section>
+
+        <section class="admin-section">
+          <h2>Rows</h2>
+          <div id="gradebook-empty" class="empty-state">No rows match your filters.</div>
+          <table id="gradebook-table" class="classes-table" hidden>
+            <thead>
+              <tr>
+                <th><button class="table-sort" data-sort-key="username">Student</button></th>
+                <th>Class</th>
+                <th>Block</th>
+                <th>Quiz</th>
+                <th>Status</th>
+                <th><button class="table-sort" data-sort-key="score">Score</button></th>
+                <th>Percent</th>
+                <th><button class="table-sort" data-sort-key="submittedAt">Submitted</button></th>
+                <th>Late</th>
+              </tr>
+            </thead>
+            <tbody id="gradebook-table-body"></tbody>
+          </table>
+        </section>
+      </section>
+    </main>
+
+    <script src="admin-gradebook.js"></script>
+  </body>
+</html>

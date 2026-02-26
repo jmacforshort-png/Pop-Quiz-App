@@ -6,6 +6,7 @@ describe("student quiz page shell", () => {
 
     expect(html).toContain("Take Quiz");
     expect(html).toContain("Back to available quizzes");
+    expect(html).toContain('id="student-logout"');
     expect(html).toContain('id="submit-student-quiz"');
     expect(html).toContain('src="student-quiz.js"');
   });

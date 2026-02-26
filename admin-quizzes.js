@@ -18,6 +18,7 @@ const refreshReportButton = document.getElementById("refresh-report");
 const reportEmpty = document.getElementById("report-empty");
 const reportTable = document.getElementById("report-table");
 const reportBody = document.getElementById("report-body");
+const logoutButton = document.getElementById("admin-logout");
 
 const CHOICE_LABELS = ["A", "B", "C", "D"];
 const QUESTION_COUNT = 5;
@@ -597,6 +598,14 @@ refreshReportButton.addEventListener("click", async () => {
 
 reportBlockFilter.addEventListener("change", async () => {
   await loadReport();
+});
+
+logoutButton?.addEventListener("click", async () => {
+  await fetch(`${API_BASE}/auth/logout`, {
+    method: "POST",
+    credentials: "include",
+  });
+  window.location.href = "index.html";
 });
 
 renderQuestionCards();

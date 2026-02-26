@@ -16,6 +16,7 @@ A lightweight browser quiz app built with plain HTML, CSS, and JavaScript.
 2. Set `AUTH_JWT_SECRET` in `.env`
 3. Start auth API: `npm run api:dev`
 4. API runs at `http://localhost:3000`
+5. Bootstrap first admin: `npm run admin:bootstrap -- --username teacher_admin --password ChangeMe123`
 
 Auth routes:
 
@@ -37,6 +38,8 @@ Admin class routes (admin role + session required):
 - `POST /admin/quizzes` for fixed-format draft quiz creation
 - `GET /admin/quizzes` list admin quizzes
 - `GET /admin/reports/quiz-summary` report assigned/submitted/average score metrics (optional `blockNumber`)
+- `GET /admin/reports/gradebook` row-level gradebook (`classId`, `quizId`, `weekStart` filters)
+- `GET /admin/reports/gradebook/export.csv` CSV export using the same gradebook filters
 - `GET /admin/quizzes/:quizId` load a quiz for editing
 - `PUT /admin/quizzes/:quizId` update a draft quiz
 - `POST /admin/quizzes/:quizId/publish` publish a draft quiz
@@ -53,6 +56,7 @@ Admin class routes (admin role + session required):
 - `admin-classes.js` calls the API at `http://localhost:3000` by default
 - To override API base URL, set `localStorage.popQuizApiBase` in browser devtools
 - `admin-quizzes.html` provides fixed 5-question quiz draft builder
+- `admin-gradebook.html` provides sortable gradebook rows with CSV export
 - quiz builder includes a lifecycle list to publish quizzes and publish results
 - admin reporting section supports block filter with assigned/submitted/average metrics
 - quiz builder requires per-block visibility start/end date-time
@@ -66,6 +70,13 @@ Admin class routes (admin role + session required):
 3. Generate Prisma client: `npm run db:generate`
 4. Run local migrations: `npm run db:migrate`
 5. For deployment migrations: `npm run db:migrate:deploy`
+
+## Admin Bootstrap
+
+- One-command setup for first admin account:
+  - `npm run admin:bootstrap -- --username teacher_admin --password ChangeMe123`
+- You can also use environment variables:
+  - `ADMIN_USERNAME=teacher_admin ADMIN_PASSWORD=ChangeMe123 npm run admin:bootstrap`
 
 ## Quality Checks
 
